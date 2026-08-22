@@ -1,0 +1,14 @@
+# Ambienti virtuali Python
+venv/
+
+# Cache di Python
+__pycache__/
+*/__pycache__/
+*.pyc
+
+# Cartelle di I/O (Consigliato per non riempire la repo con le immagini di test)
+uploads/
+results/
+
+# Cartella contenente i best.pt dei tre modelli YOLOv8 pre-addestrati (best_nano.pt, best_small.pt, best_medium.pt)
+models/

@@ -1,0 +1,13 @@
+huggingface-hub
+paddleocr
+paddlepaddle
+ultralytics
+
+#preprocessing immagini
+opencv-python
+numpy
+
+#Backend Flask
+Flask
+flask-cors
+Werkzeug
