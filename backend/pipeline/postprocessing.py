@@ -1,4 +1,6 @@
 import re
+from collections import Counter
+from dataclasses import dataclass
  
 # ---------------------------------------------------------------------------
 # Grammatica della targa italiana (dal 1994): AA 000 AA
@@ -100,3 +102,39 @@ def e_valida(targa: str | None) -> bool:
 def formatta(targa: str) -> str:
     """Rappresentazione 'AA 000 AA' per l'interfaccia. A database si salva compatta."""
     return f"{targa[:2]} {targa[2:5]} {targa[5:]}" if e_valida(targa) else targa
+
+# ---------------------------------------------------------------------------
+# Voto multi-frame
+# ---------------------------------------------------------------------------
+ 
+@dataclass
+class RisultatoVoto:
+    targa: str | None = None
+    confidenza: float = 0.0
+    occorrenze: int = 0
+    letture_totali: int = 0
+ 
+ 
+def aggrega(letture: list[tuple[str, float]]) -> RisultatoVoto:
+    """Voto di maggioranza pesato sulla confidenza OCR.
+ 
+    Ogni lettura contribuisce con la propria confidenza: due letture deboli
+    non battono due letture forti. Vince la targa con punteggio cumulato piu'
+    alto. Le letture sono gia' state validate a monte da estrai_targa().
+    """
+    if not letture:
+        return RisultatoVoto()
+ 
+    punteggio: Counter[str] = Counter()
+    occorrenze: Counter[str] = Counter()
+    for targa, confidenza in letture:
+        punteggio[targa] += confidenza
+        occorrenze[targa] += 1
+ 
+    vincitrice, totale = punteggio.most_common(1)[0]
+    return RisultatoVoto(
+        targa=vincitrice,
+        confidenza=totale / occorrenze[vincitrice],
+        occorrenze=occorrenze[vincitrice],
+        letture_totali=len(letture),
+    )

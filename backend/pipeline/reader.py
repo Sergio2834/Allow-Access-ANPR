@@ -8,6 +8,7 @@ class LicensePlateReader:
 
     def read_text(self, crop):
         text = ""
+        best_score = 0.0
         try:
             # Effettua la predizione OCR[cite: 1]
             output = self.text_recognizer.predict(input=crop, batch_size=1)
@@ -15,11 +16,12 @@ class LicensePlateReader:
                 raw_text = res["rec_text"]
                 score = res["rec_score"]
                 # Lo score è in scala 0-1[cite: 1]
-                if score and score > 0.6:
+                if score and score > best_score:
                     text = raw_text
+                    best_score = score
         except Exception as e:
             print(f"Errore OCR su un ritaglio: {e}")
-            return ""
+            return "", 0.0
 
         # Rimozione caratteri speciali e pulizia residui[cite: 1]
         pattern = re.compile(r'[\W]')
@@ -27,4 +29,4 @@ class LicensePlateReader:
         text = text.replace("???", "")
         text = text.replace("粤", "")
         
-        return str(text).upper()
+        return str(text).upper(), best_score

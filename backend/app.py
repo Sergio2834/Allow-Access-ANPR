@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 import config
 from pipeline.detector import LicensePlateDetector
 from pipeline.reader import LicensePlateReader
-from pipeline.postprocessing import estrai_targa, e_valida, formatta
+from pipeline.postprocessing import estrai_targa, e_valida, formatta, aggrega
 
 app = Flask(__name__)
 CORS(app)
@@ -71,12 +71,14 @@ def upload():
 
 @app.route("/process", methods=["POST"])
 def process_media():
+
     """
-    Analizza i file (immagini o video) caricati nella cartella uploads.
-    Restituisce un set di targhe uniche trovate.
-    """
-    unique_plates = set()
-    results_list = []
+        Analizza i file (immagini o video) caricati nella cartella uploads.
+        Restituisce un set di targhe uniche trovate.
+        """
+    
+    # Lista in cui accumuleremo tutte le letture valide sotto forma di tuple (targa, score)
+    letture_valide = []
     
     for filename in os.listdir(config.UPLOAD_FOLDER):
         filepath = os.path.join(config.UPLOAD_FOLDER, filename)
@@ -86,7 +88,7 @@ def process_media():
             
         ext = filename.rsplit(".", 1)[1].lower()
         
-        # LOGICA PER FILE VIDEO
+        # --- LOGICA PER FILE VIDEO ---
         if ext in {"mp4", "avi"}:
             cap = cv2.VideoCapture(filepath)
             frame_count = 0
@@ -98,61 +100,52 @@ def process_media():
                     
                 frame_count += 1
                 
+                # Salta frame per non sovraccaricare
                 if frame_count % config.FRAME_SKIP != 0:
                     continue
                     
-                # Estrazione e lettura
                 crops = detector.detect(frame)
                 for crop in crops:
-                    raw_text = reader.read_text(crop)
+                    raw_text, score = reader.read_text(crop)
                     if raw_text:
-                        # Passiamo il testo grezzo al tuo algoritmo avanzato
                         targa_estratta = estrai_targa(raw_text)
-                        
-                        if targa_estratta and targa_estratta not in unique_plates:
-                            unique_plates.add(targa_estratta)
-                            
-                            # Formattiamo per la UI del frontend (es. AB 123 CD)
-                            targa_formattata = formatta(targa_estratta)
-                            
-                            results_list.append({
-                                "plate_compact": targa_estratta,   # Per ricerca nel database (SPA)
-                                "plate_ui": targa_formattata,      # Per mostrarla a schermo nella SPA
-                                "is_valid_format": e_valida(targa_estratta), # Sarà True di default se l'ha estratta
-                                "source": f"{filename} (frame {frame_count})"
-                            })
+                        # Se è valida, la aggiungiamo all'elenco dei "voti"
+                        if targa_estratta and e_valida(targa_estratta):
+                            letture_valide.append((targa_estratta, score))
             cap.release()
 
-        # LOGICA PER IMMAGINI STATICHE
+        # --- LOGICA PER IMMAGINI STATICHE ---
         else:
             frame = cv2.imread(filepath)
             crops = detector.detect(frame)
             for crop in crops:
-                    raw_text = reader.read_text(crop)
-                    
-                    if raw_text:
-                        # Passiamo il testo grezzo al tuo algoritmo avanzato
-                        targa_estratta = estrai_targa(raw_text)
-                        
-                        if targa_estratta and targa_estratta not in unique_plates:
-                            unique_plates.add(targa_estratta)
-                            
-                            # Formattiamo per la UI del frontend (es. AB 123 CD)
-                            targa_formattata = formatta(targa_estratta)
-                            
-                            results_list.append({
-                                "plate_compact": targa_estratta,   # Per ricerca nel database (SPA)
-                                "plate_ui": targa_formattata,      # Per mostrarla a schermo nella SPA
-                                "is_valid_format": e_valida(targa_estratta), # Sarà True di default se l'ha estratta
-                                "source": filename
-                            })
+                raw_text, score = reader.read_text(crop)
+                if raw_text:
+                    targa_estratta = estrai_targa(raw_text)
+                    if targa_estratta and e_valida(targa_estratta):
+                        letture_valide.append((targa_estratta, score))
 
-    if not results_list:
-        return jsonify({"status": "error", "message": "Nessuna targa rilevata"}), 404
+    # --- FASE DI VOTO E AGGREGAZIONE ---
+    if not letture_valide:
+        return jsonify({"status": "error", "message": "Nessuna targa valida rilevata"}), 404
 
+    # Passiamo l'intera lista di tuple (targa, confidenza) alla tua funzione
+    risultato_voto = aggrega(letture_valide)
+    
+    targa_vincente = risultato_voto.targa
+    targa_formattata = formatta(targa_vincente)
+
+    # Restituiamo un unico risultato consolidato
     return jsonify({
         "status": "success",
-        "results": results_list
+        "results": [{
+            "plate_compact": targa_vincente,
+            "plate_ui": targa_formattata,
+            "is_valid_format": True,
+            "confidence_avg": round(risultato_voto.confidenza, 4),
+            "occurrences": risultato_voto.occorrenze,
+            "total_reads": risultato_voto.letture_totali
+        }]
     }), 200
 
 if __name__ == "__main__":
