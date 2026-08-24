@@ -1,1 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Barlow+Condensed:wght@700;800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
+
+/*
+  Palette derivata dall'oggetto stesso del progetto: la targa italiana.
+  Il blu non e' scelto per gusto, e' il blu della banda comunitaria.
+  Il fondo grafite tiene i fotogrammi video leggibili senza schiarire
+  l'interfaccia intorno.
+*/
+@theme {
+  --color-asfalto: #16181d;      /* fondo pagina */
+  --color-quadro: #1f2229;       /* superficie dei pannelli */
+  --color-tratteggio: #2e333d;   /* bordi e separatori */
+  --color-nebbia: #8b93a3;       /* testo secondario */
+  --color-targa: #edeff2;        /* bianco targa, testo primario */
+  --color-banda: #0b3c8c;        /* blu della banda targa: accento */
+
+  --color-consentito: #2f9e5e;   /* sbarra aperta */
+  --color-attesa: #e0a32e;       /* pagamento richiesto */
+  --color-negato: #c4453d;       /* transito rifiutato */
+
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-targa: "Barlow Condensed", system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-asfalto);
+  color: var(--color-targa);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Etichetta di sezione: maiuscoletto spaziato, coerente con la segnaletica. */
+.occhiello {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-nebbia);
+}
+
+.testo-targa {
+  font-family: var(--font-targa);
+  font-weight: 700; /* Peso Bold per replicare la punzonatura */
+  letter-spacing: 0.04em; /* Leggera spaziatura per separare i blocchi alfanumerici */
+  text-transform: uppercase;
+  color: #111111; /* Un nero molto scuro per contrastare sul fondo bianco-grigio */
+}
+
+/* Focus sempre visibile: requisito minimo di accessibilita'. */
+:focus-visible {
+  outline: 2px solid var(--color-banda);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
