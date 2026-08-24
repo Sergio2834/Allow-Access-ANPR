@@ -9,7 +9,10 @@ MODELS_FOLDER = os.path.join(BASE_DIR, "models")
 # Percorso del modello YOLO attivo
 ACTIVE_MODEL_PATH = os.path.join(MODELS_FOLDER, "best_medium.pt")
 
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "mp4"}
+VIDEO_EXTENSIONS = {"mp4"}
+IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}
+ALLOWED_EXTENSIONS = VIDEO_EXTENSIONS | IMAGE_EXTENSIONS
+
 DETECTION_CONFIDENCE_THRESHOLD = 0.45
 FRAME_SKIP = 10
 
