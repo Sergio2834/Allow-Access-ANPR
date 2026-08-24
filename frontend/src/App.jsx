@@ -8,14 +8,14 @@ import Soste from './pages/Soste';
 import { useParcheggioStore } from './store/parcheggioStore';
 
 const App = () => {
-  const caricaSosteAperte = useParcheggioStore((s) => s.caricaSosteAperte);
+  //const caricaSosteAperte = useParcheggioStore((s) => s.caricaSosteAperte);
 
   // Lo stato del parcheggio si carica una volta all'avvio: serve alla barra
   // di navigazione e al varco. L'errore non blocca l'interfaccia, perche' il
   // backend puo' non essere ancora avviato.
-  useEffect(() => {
+  /*useEffect(() => {
     caricaSosteAperte().catch(() => {});
-  }, [caricaSosteAperte]);
+  }, [caricaSosteAperte]);*/
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -26,67 +26,62 @@ import { api, messaggioErrore } from '../utils/api';
   ---------------------------------------------------------------------------
 */
 
-export const useParcheggioStore = create((set, get) => ({
-  sosteAperte: [],
-  caricamento: false,
+export const useParcheggioStore = create((set) => ({
+  sosteAperte: [],        // popolato in fase 2
   analisiInCorso: false,
   errore: null,
-
-  caricaSosteAperte: async () => {
-    set({ caricamento: true, errore: null });
-    try {
-      const { data } = await api.get('/api/soste', { params: { stato: 'aperta' } });
-      set({ sosteAperte: data, caricamento: false });
-      return data;
-    } catch (errore) {
-      const messaggio = messaggioErrore(errore, 'Impossibile leggere le soste in corso.');
-      set({ errore: messaggio, caricamento: false });
-      throw new Error(messaggio);
-    }
-  },
-
-  /* Invia il video al varco. Il backend deduce da solo se e' un ingresso o
-     un'uscita, in base al fatto che la targa letta abbia una sosta aperta. */
-  inviaTransito: async (file) => {
+ 
+  /*
+    Invia un file al varco e ne restituisce la lettura.
+ 
+    Due passi: /upload salva il file e ne restituisce il nome archiviato,
+    /process analizza esattamente quel file. Passare il nome e' essenziale --
+    senza, il backend analizzerebbe l'ultimo file caricato, che in presenza
+    di piu' schede aperte potrebbe non essere il nostro.
+  */
+  analizzaTransito: async (file) => {
     set({ analisiInCorso: true, errore: null });
+ 
     try {
       const modulo = new FormData();
-      modulo.append('video', file);
-      const { data } = await api.post('/api/varco', modulo, {
+      modulo.append('images', file);
+      const { data: caricamento } = await api.post('/upload', modulo, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+ 
+      const { data } = await api.post('/process', {
+        filename: caricamento.filename,
+      });
       set({ analisiInCorso: false });
-      await get().caricaSosteAperte();
-      return data;
+ 
+      // Nessuna targa trovata e' un esito, non un errore: il backend lo
+      // segnala con 200 e status "no_plate", cosi' resta distinguibile da un
+      // guasto di rete e l'interfaccia puo' presentarlo diversamente.
+      if (data.status === 'no_plate') {
+        return { esito: 'TARGA_NON_RILEVATA' };
+      }
+ 
+      const lettura = data.results[0];
+      return {
+        esito: 'TARGA_LETTA',
+        targa: lettura.plate_compact,
+        confidenza: lettura.confidence_avg,
+        occorrenze: lettura.occurrences,
+        lettureTotali: lettura.total_reads,
+      };
     } catch (errore) {
-      const messaggio = messaggioErrore(errore, "Analisi del video non riuscita.");
+      const messaggio = messaggioErrore(errore, 'Analisi non riuscita.');
       set({ errore: messaggio, analisiInCorso: false });
       throw new Error(messaggio);
     }
   },
-
-  /* Ripiego quando la lettura fallisce: la targa viene digitata a mano. */
-  inviaTransitoManuale: async (targa) => {
-    set({ analisiInCorso: true, errore: null });
+ 
+  verificaServer: async () => {
     try {
-      const { data } = await api.post('/api/varco/manuale', { targa });
-      set({ analisiInCorso: false });
-      await get().caricaSosteAperte();
+      const { data } = await api.get('/status');
       return data;
-    } catch (errore) {
-      const messaggio = messaggioErrore(errore, 'Targa non accettata.');
-      set({ errore: messaggio, analisiInCorso: false });
-      throw new Error(messaggio);
-    }
-  },
-
-  pagaSosta: async (idSosta) => {
-    try {
-      const { data } = await api.post(`/api/soste/${idSosta}/pagamento`);
-      await get().caricaSosteAperte();
-      return data;
-    } catch (errore) {
-      throw new Error(messaggioErrore(errore, 'Pagamento non registrato.'));
+    } catch {
+      return null;
     }
   },
 }));
