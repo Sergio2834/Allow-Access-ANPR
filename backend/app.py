@@ -178,18 +178,22 @@ def process_media():
             "filename": filename,
         }), 200
  
-    risultato = aggrega(letture)
-    return jsonify({
-        "status": "success",
-        "filename": filename,
-        "results": [{
+    risultati_voto = aggrega(letture)
+    results_list = []
+    for risultato in risultati_voto:
+        results_list.append({
             "plate_compact": risultato.targa,
             "plate_ui": formatta(risultato.targa),
             "is_valid_format": True,
             "confidence_avg": round(risultato.confidenza, 4),
             "occurrences": risultato.occorrenze,
             "total_reads": risultato.letture_totali,
-        }],
+        })
+ 
+    return jsonify({
+        "status": "success",
+        "filename": filename,
+        "results": results_list,
     }), 200
  
  
@@ -227,13 +231,33 @@ def varco():
         decisione = registra_transito(None, sorgente="file")
         return jsonify(decisione.to_dict()), 200
  
-    risultato = aggrega(letture)
+    candidati = aggrega(letture)
+    migliore = candidati[0]
+
+    lista_candidati_dict = [
+        {
+            "targa": c.targa,
+            "confidenza": round(c.confidenza, 4),
+            "occorrenze": c.occorrenze,
+            "letture_totali": c.letture_totali
+        } for c in candidati
+    ]
+ 
+    # Intervento "Human-in-the-loop": confidenza troppo bassa
+    if migliore.confidenza < config.CONFIDENZA_MINIMA_AUTOMATICA:
+        return jsonify({
+            "esito": "CONFERMA_RICHIESTA",
+            "candidati": lista_candidati_dict,
+            "messaggio": "Il modello è incerto. Conferma la targa corretta o modificala manualmente."
+        }), 200
+ 
+    # Confidenza alta: transito automatico
     decisione = registra_transito(
-        risultato.targa,
+        migliore.targa,
         sorgente="file",
-        confidenza=round(risultato.confidenza, 4),
-        occorrenze=risultato.occorrenze,
-        letture_totali=risultato.letture_totali,
+        confidenza=round(migliore.confidenza, 4),
+        occorrenze=migliore.occorrenze,
+        letture_totali=migliore.letture_totali,
     )
     return jsonify(decisione.to_dict()), 200
  

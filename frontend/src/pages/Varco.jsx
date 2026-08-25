@@ -5,6 +5,7 @@ import SelettoreVideo from '../components/SelettoreVideo';
 import EsitoVarco from '../components/EsitoVarco';
 import TargaManuale from '../components/TargaManuale';
 import TargaChip from '../components/TargaChip';
+import ConfermaTarga from '../components/ConfermaTarga';
 import { useParcheggioStore } from '../store/parcheggioStore';
 import { formattaDurata, formattaOra, secondiDa } from '../utils/formatta';
  
@@ -40,6 +41,7 @@ const Varco = () => {
       USCITA_CONSENTITA: () => toast.success('Uscita consentita'),
       PAGAMENTO_RICHIESTO: () => toast('Sosta conclusa, da saldare', { icon: '💳' }),
       TARGA_NON_RILEVATA: () => toast.error('Nessuna targa leggibile'),
+      CONFERMA_RICHIESTA: () => toast('Conferma manuale richiesta', { icon: '⚠️' }),
     };
     (messaggi[esito] ?? (() => {}))();
   };
@@ -109,12 +111,25 @@ const Varco = () => {
             )}
           </button>
  
-          {decisione && (
+          {/* 1. Caso: Confidenza bassa, mostra i candidati */}
+          {decisione && decisione.esito === 'CONFERMA_RICHIESTA' && (
+            <ConfermaTarga 
+              candidati={decisione.candidati} 
+              onConferma={inviaManuale} 
+              disabilitato={analisiInCorso} 
+            />
+          )}
+
+          {/* 2. Caso: Transito elaborato normalmente dal varco */}
+          {decisione && decisione.esito !== 'CONFERMA_RICHIESTA' && (
             <EsitoVarco decisione={decisione} onPaga={paga} inPagamento={pagamentoInCorso} />
           )}
  
-          {(!decisione || decisione.esito === 'TARGA_NON_RILEVATA') && (
-            <TargaManuale onInvia={inviaManuale} disabilitato={analisiInCorso} />
+          {/* 3. Caso: Fallimento totale dell'OCR. Invece di essere sempre visibile, compare solo qui */}
+          {decisione?.esito === 'TARGA_NON_RILEVATA' && (
+            <div className="mt-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <TargaManuale onInvia={inviaManuale} disabilitato={analisiInCorso} />
+            </div>
           )}
         </div>
  

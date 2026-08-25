@@ -130,11 +130,15 @@ def aggrega(letture: list[tuple[str, float]]) -> RisultatoVoto:
     for targa, confidenza in letture:
         punteggio[targa] += confidenza
         occorrenze[targa] += 1
- 
-    vincitrice, totale = punteggio.most_common(1)[0]
-    return RisultatoVoto(
-        targa=vincitrice,
-        confidenza=totale / occorrenze[vincitrice],
-        occorrenze=occorrenze[vincitrice],
-        letture_totali=len(letture),
-    )
+
+    risultati = []
+    for targa, totale in punteggio.most_common():
+        risultati.append(
+            RisultatoVoto(
+                targa=targa,
+                confidenza=totale / occorrenze[targa],
+                occorrenze=occorrenze[targa],
+                letture_totali=len(letture),
+            )
+        )
+    return risultati
