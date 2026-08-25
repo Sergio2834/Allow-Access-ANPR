@@ -11,3 +11,4 @@ numpy
 Flask
 flask-cors
 Werkzeug
+Flask-SQLAlchemy

@@ -2,30 +2,31 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Loader, ScanLine } from 'lucide-react';
 import SelettoreVideo from '../components/SelettoreVideo';
-import EsitoLettura from '../components/EsitoLettura';
+import EsitoVarco from '../components/EsitoVarco';
+import TargaManuale from '../components/TargaManuale';
+import TargaChip from '../components/TargaChip';
 import { useParcheggioStore } from '../store/parcheggioStore';
-
+import { formattaDurata, formattaOra, secondiDa } from '../utils/formatta';
+ 
 /*
-  Pagina principale: varco unico a stato.
-  Il video viene inviato al backend, che deduce da solo se si tratta di un
-  ingresso o di un'uscita in base alla presenza di una sosta aperta per la
-  targa letta.
-
-  Da costruire nel prossimo passo:
-    - selezione del video e anteprima
-    - esito del transito con TargaChip in evidenza
-    - elenco dei veicoli attualmente dentro
-    - ripiego con targa digitata a mano
+  Varco unico a stato: una sola telecamera, una sola pagina.
+  Il sistema deduce ingresso o uscita dalla presenza di una sosta attiva per
+  la targa letta.
 */
 const Varco = () => {
   const [file, setFile] = useState(null);
-  const [risultato, setRisultato] = useState(null);
+  const [decisione, setDecisione] = useState(null);
   const [secondi, setSecondi] = useState(0);
  
-  const { analizzaTransito, analisiInCorso } = useParcheggioStore();
+  const {
+    analizzaTransito, transitoManuale, pagaSosta, caricaSosteAperte,
+    sosteAperte, analisiInCorso, pagamentoInCorso,
+  } = useParcheggioStore();
  
-  // Cronometro dell'analisi: un video richiede decine di secondi e senza un
-  // riscontro visibile sembra che l'applicazione sia bloccata.
+  useEffect(() => { caricaSosteAperte(); }, [caricaSosteAperte]);
+ 
+  // Cronometro dell'analisi: senza un riscontro visibile un video lungo
+  // sembra un blocco dell'applicazione.
   useEffect(() => {
     if (!analisiInCorso) return;
     setSecondi(0);
@@ -33,79 +34,118 @@ const Varco = () => {
     return () => clearInterval(intervallo);
   }, [analisiInCorso]);
  
+  const annuncia = (esito) => {
+    const messaggi = {
+      INGRESSO_CONSENTITO: () => toast.success('Ingresso registrato'),
+      USCITA_CONSENTITA: () => toast.success('Uscita consentita'),
+      PAGAMENTO_RICHIESTO: () => toast('Sosta conclusa, da saldare', { icon: '💳' }),
+      TARGA_NON_RILEVATA: () => toast.error('Nessuna targa leggibile'),
+    };
+    (messaggi[esito] ?? (() => {}))();
+  };
+ 
   const avviaAnalisi = async () => {
     if (!file) return;
-    setRisultato(null);
- 
+    setDecisione(null);
     try {
       const esito = await analizzaTransito(file);
-      setRisultato(esito);
- 
-      if (esito.esito === 'TARGA_LETTA') {
-        toast.success(`Targa letta: ${esito.targa}`);
-      } else {
-        toast('Nessuna targa leggibile nel video', { icon: '⚠️' });
-      }
+      setDecisione(esito);
+      annuncia(esito.esito);
     } catch (errore) {
       toast.error(errore.message);
     }
   };
  
-  const cambiaFile = (nuovoFile) => {
-    setFile(nuovoFile);
-    setRisultato(null);
+  const inviaManuale = async (targa) => {
+    setDecisione(null);
+    try {
+      const esito = await transitoManuale(targa);
+      setDecisione(esito);
+      annuncia(esito.esito);
+    } catch (errore) {
+      toast.error(errore.message);
+    }
+  };
+ 
+  const paga = async () => {
+    try {
+      // Il pagamento restituisce una decisione come il varco, quindi la
+      // conferma di uscita consentita sostituisce in posto la richiesta di
+      // pagamento: il veicolo non deve ripassare davanti alla telecamera.
+      const esito = await pagaSosta(decisione.sosta.id);
+      setDecisione(esito);
+      annuncia(esito.esito);
+    } catch (errore) {
+      toast.error(errore.message);
+    }
   };
  
   return (
-    <section className="px-5 md:px-8 py-10 max-w-3xl mx-auto w-full">
+    <section className="px-5 md:px-8 py-10 max-w-6xl mx-auto w-full">
       <p className="occhiello">Varco</p>
       <h1 className="text-3xl font-bold mt-2">Rilevazione transito</h1>
       <p className="text-nebbia mt-3 max-w-prose">
-        Carica il video della telecamera al varco. Il sistema individua la targa
-        nei fotogrammi e consolida le letture in un unico risultato.
+        Carica il video della telecamera. Il sistema legge la targa e stabilisce
+        da solo se il veicolo sta entrando o uscendo.
       </p>
  
-      <div className="mt-8">
-        <SelettoreVideo
-          file={file}
-          onCambia={cambiaFile}
-          disabilitato={analisiInCorso}
-        />
-      </div>
+      <div className="grid lg:grid-cols-[1fr_320px] gap-8 mt-8 items-start">
+        <div className="space-y-6">
+          <SelettoreVideo file={file} onCambia={(f) => { setFile(f); setDecisione(null); }}
+                          disabilitato={analisiInCorso} />
  
-      <button
-        onClick={avviaAnalisi}
-        disabled={!file || analisiInCorso}
-        className="mt-6 w-full sm:w-auto flex items-center justify-center gap-2
-                   bg-banda hover:bg-banda/85 text-white font-medium
-                   px-6 py-3 rounded-md transition-colors
-                   disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {analisiInCorso ? (
-          <>
-            <Loader className="w-4 h-4 animate-spin" />
-            Analisi in corso · {secondi}s
-          </>
-        ) : (
-          <>
-            <ScanLine className="w-4 h-4" />
-            Leggi la targa
-          </>
-        )}
-      </button>
+          <button
+            onClick={avviaAnalisi}
+            disabled={!file || analisiInCorso}
+            className="w-full sm:w-auto flex items-center justify-center gap-2
+                       bg-banda hover:bg-banda/85 text-white font-medium
+                       px-6 py-3 rounded-md transition-colors
+                       disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {analisiInCorso ? (
+              <><Loader className="w-4 h-4 animate-spin" />Analisi in corso · {secondi}s</>
+            ) : (
+              <><ScanLine className="w-4 h-4" />Leggi la targa</>
+            )}
+          </button>
  
-      {analisiInCorso && (
-        <p className="text-sm text-nebbia mt-3">
-          La pipeline esamina un fotogramma ogni dieci. Su un video lungo può
-          richiedere qualche decina di secondi.
-        </p>
-      )}
+          {decisione && (
+            <EsitoVarco decisione={decisione} onPaga={paga} inPagamento={pagamentoInCorso} />
+          )}
  
-      {risultato && (
-        <div className="mt-10">
-          <EsitoLettura risultato={risultato} />
+          {(!decisione || decisione.esito === 'TARGA_NON_RILEVATA') && (
+            <TargaManuale onInvia={inviaManuale} disabilitato={analisiInCorso} />
+          )}
         </div>
-      )}
+ 
+        {/* Lo stato del parcheggio resta sempre visibile accanto al varco:
+            e' il contesto che rende leggibile ogni esito. */}
+        <aside className="rounded-lg border border-tratteggio bg-quadro p-5">
+          <p className="occhiello">Veicoli nel parcheggio</p>
+ 
+          {sosteAperte.length === 0 ? (
+            <p className="text-nebbia text-sm mt-4">Il parcheggio è vuoto.</p>
+          ) : (
+            <ul className="mt-4 space-y-4">
+              {sosteAperte.map((sosta) => (
+                <li key={sosta.id} className="flex flex-col gap-2">
+                  <TargaChip targa={sosta.targa} dimensione="sm" />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-nebbia">
+                      dalle {formattaOra(sosta.ingresso_at)} ·{' '}
+                      {formattaDurata(sosta.uscita_at ? sosta.durata_secondi
+                                                      : secondiDa(sosta.ingresso_at))}
+                    </span>
+                    <span className={sosta.stato === 'DA_PAGARE' ? 'text-attesa' : 'text-nebbia'}>
+                      {sosta.stato === 'DA_PAGARE' ? 'al varco, da saldare' : 'in sosta'}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      </div>
     </section>
   );
 };
