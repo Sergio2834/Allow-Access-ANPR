@@ -15,13 +15,12 @@ import { formattaDurata, formattaOra, secondiDa } from '../utils/formatta';
   la targa letta.
 */
 const Varco = () => {
-  const [file, setFile] = useState(null);
-  const [decisione, setDecisione] = useState(null);
   const [secondi, setSecondi] = useState(0);
  
   const {
     analizzaTransito, transitoManuale, pagaSosta, caricaSosteAperte,
-    sosteAperte, analisiInCorso, pagamentoInCorso,
+    impostaFile, file, decisione,
+    sosteAperte, analisiInCorso, analisiIniziataAt, pagamentoInCorso,
   } = useParcheggioStore();
  
   useEffect(() => { caricaSosteAperte(); }, [caricaSosteAperte]);
@@ -29,11 +28,16 @@ const Varco = () => {
   // Cronometro dell'analisi: senza un riscontro visibile un video lungo
   // sembra un blocco dell'applicazione.
   useEffect(() => {
-    if (!analisiInCorso) return;
-    setSecondi(0);
-    const intervallo = setInterval(() => setSecondi((s) => s + 1), 1000);
+    if (!analisiIniziataAt) {
+      setSecondi(0);
+      return;
+    }
+    const aggiorna = () =>
+      setSecondi(Math.floor((Date.now() - analisiIniziataAt) / 1000));
+    aggiorna();  // subito, senza aspettare il primo tick
+    const intervallo = setInterval(aggiorna, 1000);
     return () => clearInterval(intervallo);
-  }, [analisiInCorso]);
+  }, [analisiIniziataAt]);
  
   const annuncia = (esito) => {
     const messaggi = {
@@ -48,22 +52,16 @@ const Varco = () => {
  
   const avviaAnalisi = async () => {
     if (!file) return;
-    setDecisione(null);
     try {
-      const esito = await analizzaTransito(file);
-      setDecisione(esito);
-      annuncia(esito.esito);
+      annuncia((await analizzaTransito(file)).esito);
     } catch (errore) {
       toast.error(errore.message);
     }
   };
  
   const inviaManuale = async (targa) => {
-    setDecisione(null);
     try {
-      const esito = await transitoManuale(targa);
-      setDecisione(esito);
-      annuncia(esito.esito);
+      annuncia((await transitoManuale(targa)).esito);
     } catch (errore) {
       toast.error(errore.message);
     }
@@ -71,12 +69,7 @@ const Varco = () => {
  
   const paga = async () => {
     try {
-      // Il pagamento restituisce una decisione come il varco, quindi la
-      // conferma di uscita consentita sostituisce in posto la richiesta di
-      // pagamento: il veicolo non deve ripassare davanti alla telecamera.
-      const esito = await pagaSosta(decisione.sosta.id);
-      setDecisione(esito);
-      annuncia(esito.esito);
+      annuncia((await pagaSosta(decisione.sosta.id)).esito);
     } catch (errore) {
       toast.error(errore.message);
     }
@@ -93,7 +86,7 @@ const Varco = () => {
  
       <div className="grid lg:grid-cols-[1fr_320px] gap-8 mt-8 items-start">
         <div className="space-y-6">
-          <SelettoreVideo file={file} onCambia={(f) => { setFile(f); setDecisione(null); }}
+          <SelettoreVideo file={file} onCambia={impostaFile}
                           disabilitato={analisiInCorso} />
  
           <button

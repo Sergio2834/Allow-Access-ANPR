@@ -23,6 +23,12 @@ export const useParcheggioStore = create((set, get) => ({
   analisiInCorso: false,
   pagamentoInCorso: false,
   errore: null,
+  file: null,
+  decisione: null,
+  analisiIniziataAt: null,
+
+  impostaFile: (file) => set({ file, decisione: null }),
+  azzeraVarco: () => set({ file: null, decisione: null }),
  
   caricaSosteAperte: async () => {
     try {
@@ -39,34 +45,34 @@ export const useParcheggioStore = create((set, get) => ({
  
   /* Invia il file al varco. Il backend deduce da solo se e' ingresso o uscita. */
   analizzaTransito: async (file) => {
-    set({ analisiInCorso: true, errore: null });
+    set({ analisiInCorso: true, errore: null, analisiIniziataAt: Date.now() });
     try {
       const modulo = new FormData();
       modulo.append('video', file);
       const { data } = await api.post('/api/varco', modulo, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      set({ analisiInCorso: false });
+      set({ analisiInCorso: false, analisiIniziataAt: null, decisione: data});
       await get().caricaSosteAperte();
       return data;
     } catch (errore) {
       const messaggio = messaggioErrore(errore, 'Analisi non riuscita.');
-      set({ errore: messaggio, analisiInCorso: false });
+      set({ errore: messaggio, analisiInCorso: false, analisiIniziataAt: null });
       throw new Error(messaggio);
     }
   },
  
   /* Ripiego quando la lettura fallisce o e' ambigua. */
   transitoManuale: async (targa) => {
-    set({ analisiInCorso: true, errore: null });
+    set({ analisiInCorso: true, errore: null, analisiIniziataAt: Date.now() });
     try {
       const { data } = await api.post('/api/varco/manuale', { targa });
-      set({ analisiInCorso: false });
+      set({ analisiInCorso: false, analisiIniziataAt: null, decisione: data });
       await get().caricaSosteAperte();
       return data;
     } catch (errore) {
       const messaggio = messaggioErrore(errore, 'Targa non accettata.');
-      set({ errore: messaggio, analisiInCorso: false });
+      set({ errore: messaggio, analisiInCorso: false,  analisiIniziataAt: null });
       throw new Error(messaggio);
     }
   },
@@ -75,7 +81,7 @@ export const useParcheggioStore = create((set, get) => ({
     set({ pagamentoInCorso: true });
     try {
       const { data } = await api.post(`/api/soste/${idSosta}/pagamento`);
-      set({ pagamentoInCorso: false });
+      set({ pagamentoInCorso: false, decisione: data });
       await get().caricaSosteAperte();
       return data;
     } catch (errore) {
