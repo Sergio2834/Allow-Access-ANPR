@@ -6,17 +6,17 @@ import Footer from './components/Footer';
 import Varco from './pages/Varco';
 import Soste from './pages/Soste';
 import { useParcheggioStore } from './store/parcheggioStore';
-
+ 
 const App = () => {
-  //const caricaSosteAperte = useParcheggioStore((s) => s.caricaSosteAperte);
-
-  // Lo stato del parcheggio si carica una volta all'avvio: serve alla barra
-  // di navigazione e al varco. L'errore non blocca l'interfaccia, perche' il
-  // backend puo' non essere ancora avviato.
-  /*useEffect(() => {
-    caricaSosteAperte().catch(() => {});
-  }, [caricaSosteAperte]);*/
-
+  const caricaSosteAperte = useParcheggioStore((s) => s.caricaSosteAperte);
+ 
+  // Stato del parcheggio all'avvio: serve al contatore nella barra di
+  // navigazione. Un errore non blocca l'interfaccia, perche' il backend
+  // potrebbe non essere ancora avviato.
+  useEffect(() => {
+    caricaSosteAperte();
+  }, [caricaSosteAperte]);
+ 
   return (
     <div className="min-h-screen flex flex-col">
       <Toaster
@@ -36,5 +36,5 @@ const App = () => {
     </div>
   );
 };
-
+ 
 export default App;
