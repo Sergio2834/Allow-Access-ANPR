@@ -14,6 +14,7 @@ IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}
 ALLOWED_EXTENSIONS = VIDEO_EXTENSIONS | IMAGE_EXTENSIONS
 
 DETECTION_CONFIDENCE_THRESHOLD = 0.45
+CONFIDENZA_MINIMA_AUTOMATICA = 0.90
 FRAME_SKIP = 10
 
 # ---------------------------------------------------------------------------
