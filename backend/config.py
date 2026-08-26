@@ -7,7 +7,7 @@ RESULTS_FOLDER = os.path.join(BASE_DIR, "results")
 MODELS_FOLDER = os.path.join(BASE_DIR, "models")
 
 # Percorso del modello YOLO attivo
-ACTIVE_MODEL_PATH = os.path.join(MODELS_FOLDER, "best_medium.pt")
+ACTIVE_MODEL_PATH = os.path.join(MODELS_FOLDER, "best_medium.onnx") #riemtti best_medium.pt se vuoi
 
 VIDEO_EXTENSIONS = {"mp4"}
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}
