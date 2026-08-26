@@ -1,4 +1,6 @@
 import os
+os.environ["OMP_NUM_THREADS"] = "8" #si può rimettere 4
+os.environ["OMP_WAIT_POLICY"] = "PASSIVE" #indica che i threads inattivi non girano inutilmente
 import shutil
 import tempfile
 import time

@@ -10,9 +10,8 @@ class LicensePlateDetector:
     def detect(self, frame):
         if frame is None:
             return []
-
-        # Effettua la predizione tramite YOLO[cite: 1]
-        results = self.model.predict(frame, conf=config.DETECTION_CONFIDENCE_THRESHOLD)
+        # Effettua la predizione tramite YOLO
+        results = self.model.predict(frame, conf=config.DETECTION_CONFIDENCE_THRESHOLD, verbose=False)
         crops = []
         
         for result in results:
@@ -21,7 +20,7 @@ class LicensePlateDetector:
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                 
-                # Blocca le coordinate dentro i bordi per non generare crop vuoti[cite: 1]
+                # Blocca le coordinate dentro i bordi per non generare crop vuoti
                 h, w = frame.shape[:2]
                 x1, y1 = max(0, x1), max(0, y1)
                 x2, y2 = min(w, x2), min(h, y2)
