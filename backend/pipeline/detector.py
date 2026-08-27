@@ -5,7 +5,7 @@ import config
 class LicensePlateDetector:
     def __init__(self):
         # Inizializza il modello YOLO al caricamento della classe
-        self.model = YOLO(config.ACTIVE_MODEL_PATH)
+        self.model = YOLO(config.ACTIVE_MODEL_PATH, task="detect")
 
     def detect(self, frame):
         if frame is None:
