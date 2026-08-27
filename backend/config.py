@@ -17,6 +17,9 @@ DETECTION_CONFIDENCE_THRESHOLD = 0.45
 CONFIDENZA_MINIMA_AUTOMATICA = 0.90
 FRAME_SKIP = 10
 
+WEBCAM_INDEX = 2  # 2 dovrebbe essere la OBS Virtual Camera
+FRAMES_PER_LETTURA = 3  # Quanti fotogrammi catturare e analizzare al click
+
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------

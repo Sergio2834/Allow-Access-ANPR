@@ -44,15 +44,12 @@ export const useParcheggioStore = create((set, get) => ({
   },
  
   /* Invia il file al varco. Il backend deduce da solo se e' ingresso o uscita. */
-  analizzaTransito: async (file) => {
-    set({ analisiInCorso: true, errore: null, analisiIniziataAt: Date.now() });
+  analizzaTransito: async () => {
+    set({ analisiInCorso: true, errore: null, decisione: null, analisiIniziataAt: Date.now() });
     try {
-      const modulo = new FormData();
-      modulo.append('video', file);
-      const { data } = await api.post('/api/varco', modulo, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      set({ analisiInCorso: false, analisiIniziataAt: null, decisione: data});
+      // Nessun FormData, nessun file. È il backend che acquisisce.
+      const { data } = await api.post('/api/varco');
+      set({ analisiInCorso: false, analisiIniziataAt: null, decisione: data });
       await get().caricaSosteAperte();
       return data;
     } catch (errore) {

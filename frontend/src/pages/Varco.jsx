@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Loader, ScanLine } from 'lucide-react';
 import SelettoreVideo from '../components/SelettoreVideo';
+import LiveWebcam from '../components/LiveWebcam';
 import EsitoVarco from '../components/EsitoVarco';
 import TargaManuale from '../components/TargaManuale';
 import TargaChip from '../components/TargaChip';
@@ -51,9 +52,8 @@ const Varco = () => {
   };
  
   const avviaAnalisi = async () => {
-    if (!file) return;
     try {
-      annuncia((await analizzaTransito(file)).esito);
+      annuncia((await analizzaTransito()).esito);
     } catch (errore) {
       toast.error(errore.message);
     }
@@ -80,22 +80,21 @@ const Varco = () => {
       <p className="occhiello">Varco</p>
       <h1 className="text-3xl font-bold mt-2">Rilevazione transito</h1>
       <p className="text-nebbia mt-3 max-w-prose">
-        Carica il video della telecamera. Il sistema legge la targa e stabilisce
-        da solo se il veicolo sta entrando o uscendo.
+        La telecamera è attiva in tempo reale. Clicca su "Leggi la targa" per 
+        effettuare la lettura e stabilire se il veicolo sta entrando o uscendo.
       </p>
  
       <div className="grid lg:grid-cols-[1fr_320px] gap-8 mt-8 items-start">
         <div className="space-y-6">
-          <SelettoreVideo file={file} onCambia={impostaFile}
-                          disabilitato={analisiInCorso} />
+          <LiveWebcam />
  
           <button
             onClick={avviaAnalisi}
-            disabled={!file || analisiInCorso}
+            disabled={analisiInCorso}
             className="w-full sm:w-auto flex items-center justify-center gap-2
                        bg-banda hover:bg-banda/85 text-white font-medium
                        px-6 py-3 rounded-md transition-colors
-                       disabled:opacity-40 disabled:cursor-not-allowed"
+                       disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {analisiInCorso ? (
               <><Loader className="w-4 h-4 animate-spin" />Analisi in corso · {secondi}s</>

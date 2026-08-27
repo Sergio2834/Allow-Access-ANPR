@@ -7,7 +7,9 @@ import time
 from collections.abc import Iterable, Iterator
  
 import cv2
-from flask import Flask, jsonify, request
+import numpy as np
+from flask import Flask, jsonify, request, Response
+from services.webcam import stream_camera
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
  
@@ -105,8 +107,14 @@ def file_piu_recente() -> str | None:
     if not candidati:
         return None
     return max(candidati, key=lambda f: os.path.getmtime(os.path.join(config.UPLOAD_FOLDER, f)))
- 
- 
+
+def genera_flusso():
+    while True:
+        frame = stream_camera.get_jpeg()
+        if frame:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n') 
+        time.sleep(0.04)
 # ---------------------------------------------------------------------------
 # Endpoint di servizio e di prova manuale (invariati)
 # ---------------------------------------------------------------------------
@@ -202,40 +210,38 @@ def process_media():
 # ---------------------------------------------------------------------------
 # Varco
 # ---------------------------------------------------------------------------
- 
+
+@app.route("/api/stream")
+def video_feed():
+    """Flusso MJPEG per mostrare l'anteprima live nel frontend."""
+    return Response(genera_flusso(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 @app.route("/api/varco", methods=["POST"])
 def varco():
-    """Transito al varco a partire da un video o un'immagine.
- 
-    Il file viene analizzato da un percorso temporaneo e subito eliminato: non
-    finisce in uploads/, cosi' le rilevazioni non si accumulano e non c'e'
-    nulla da ripulire fra un transito e l'altro.
-    """
-    file = request.files.get("video") or request.files.get("images")
-    if file is None or file.filename == "":
-        return jsonify({"error": "Nessun file ricevuto"}), 400
-    if not allowed_file(file.filename):
-        return jsonify({"error": f"Estensione non consentita: {file.filename}"}), 400
- 
-    estensione = file.filename.rsplit(".", 1)[1].lower()
-    percorso = None
-    try:
-        with tempfile.NamedTemporaryFile(suffix=f".{estensione}", delete=False) as temporaneo:
-            percorso = temporaneo.name
-            file.save(percorso)
- 
-        letture = letture_da_frames(frames_da_file(percorso))
-    finally:
-        if percorso and os.path.exists(percorso):
-            os.unlink(percorso)
- 
+    """Transito al varco catturando fotogrammi in realtime dalla webcam."""
+    frames = []
+    
+    # Cattura N fotogrammi distanziati di poco
+    for _ in range(config.FRAMES_PER_LETTURA):
+        frame = stream_camera.get_frame()
+        if frame is not None:
+            frames.append(frame)
+        time.sleep(0.1)  # Lascia scorrere 100ms tra uno scatto e l'altro
+        
+    if not frames:
+        return jsonify({"error": "Impossibile leggere dalla webcam"}), 500
+
+    letture = letture_da_frames(frames)
+    
     if not letture:
-        decisione = registra_transito(None, sorgente="file")
+        decisione = registra_transito(None, sorgente="webcam")
         return jsonify(decisione.to_dict()), 200
- 
+
+    # ... [Da qui in giù è IDENTICO al codice del messaggio precedente: 
+    # calcolo candidati, controllo confidenza (CONFERMA_RICHIESTA) ecc.]
     candidati = aggrega(letture)
     migliore = candidati[0]
-
+ 
     lista_candidati_dict = [
         {
             "targa": c.targa,
@@ -244,24 +250,26 @@ def varco():
             "letture_totali": c.letture_totali
         } for c in candidati
     ]
- 
-    # Intervento "Human-in-the-loop": confidenza troppo bassa
+
     if migliore.confidenza < config.CONFIDENZA_MINIMA_AUTOMATICA:
         return jsonify({
             "esito": "CONFERMA_RICHIESTA",
             "candidati": lista_candidati_dict,
-            "messaggio": "Il modello è incerto. Conferma la targa corretta o modificala manualmente."
+            "messaggio": "Il modello OCR è incerto. Conferma la targa corretta o inseriscila manualmente."
         }), 200
  
-    # Confidenza alta: transito automatico
     decisione = registra_transito(
         migliore.targa,
-        sorgente="file",
+        sorgente="webcam",
         confidenza=round(migliore.confidenza, 4),
         occorrenze=migliore.occorrenze,
         letture_totali=migliore.letture_totali,
     )
-    return jsonify(decisione.to_dict()), 200
+    
+    risposta = decisione.to_dict()
+    risposta["candidati"] = lista_candidati_dict
+    
+    return jsonify(risposta), 200
  
  
 @app.route("/api/varco/manuale", methods=["POST"])
@@ -337,7 +345,10 @@ def stato_parcheggio():
         "tariffa_centesimi_al_minuto": config.TARIFFA_CENTESIMI_AL_MINUTO,
     }), 200
  
- 
+print("Riscaldamento modelli...")
+letture_da_frame(np.zeros((640, 640, 3), dtype=np.uint8))
+print("Modelli pronti.")
+
 if __name__ == "__main__":
     # use_reloader=False: con il reloader Flask avvia un processo figlio e i
     # modelli verrebbero caricati due volte.
