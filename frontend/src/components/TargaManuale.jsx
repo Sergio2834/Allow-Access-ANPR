@@ -57,7 +57,7 @@ const TargaManuale = ({ onInvia, disabilitato = false }) => {
           disabled={!completa || disabilitato}
           className="h-11 px-6 rounded-md bg-tratteggio hover:bg-tratteggio/70
                      font-medium transition-colors
-                     disabled:opacity-40 disabled:cursor-not-allowed"
+                     disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
           Registra transito
         </button>

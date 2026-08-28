@@ -129,22 +129,22 @@ const Varco = () => {
             e' il contesto che rende leggibile ogni esito. */}
         <aside className="rounded-lg border border-tratteggio bg-quadro p-5">
           <p className="occhiello">Veicoli nel parcheggio</p>
- 
           {sosteAperte.length === 0 ? (
             <p className="text-nebbia text-sm mt-4">Il parcheggio è vuoto.</p>
           ) : (
             <ul className="mt-4 space-y-4">
               {sosteAperte.map((sosta) => (
                 <li key={sosta.id} className="flex flex-col gap-2">
-                  <TargaChip targa={sosta.targa} dimensione="sm" />
+                  <div className="flex items-center justify-between">
+                    <TargaChip targa={sosta.targa} dimensione="sm" />
+                    <div><span className={sosta.stato === 'DA_PAGARE' ? 'text-attesa' : 'text-nebbia'}>
+                      {sosta.stato === 'DA_PAGARE' ? 'da saldare' : 'in sosta'}
+                    </span>
+                    </div>
+                  </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-nebbia">
-                      dalle {formattaOra(sosta.ingresso_at)} ·{' '}
-                      {formattaDurata(sosta.uscita_at ? sosta.durata_secondi
-                                                      : secondiDa(sosta.ingresso_at))}
-                    </span>
-                    <span className={sosta.stato === 'DA_PAGARE' ? 'text-attesa' : 'text-nebbia'}>
-                      {sosta.stato === 'DA_PAGARE' ? 'al varco, da saldare' : 'in sosta'}
+                      dalle {formattaOra(sosta.ingresso_at)}
                     </span>
                   </div>
                 </li>
