@@ -25,7 +25,7 @@ const ConfermaTarga = ({ candidati, onConferma, disabilitato }) => {
               key={cand.targa}
               onClick={() => onConferma(cand.targa)}
               disabled={disabilitato}
-              className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-md border border-tratteggio bg-quadro hover:border-attesa/50 transition-colors text-left disabled:opacity-50"
+              className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-md border border-tratteggio bg-quadro hover:border-attesa/50 transition-colors text-left disabled:opacity-50 cursor-pointer"
             >
               <div className="flex items-center gap-4">
                 <TargaChip targa={cand.targa} dimensione="md" />

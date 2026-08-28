@@ -100,12 +100,12 @@ const EsitoVarco = ({ decisione, onPaga, inPagamento = false }) => {
           className="mt-6 w-full sm:w-auto flex items-center justify-center gap-2
                      bg-attesa hover:bg-attesa/85 text-asfalto font-semibold
                      px-6 py-3 rounded-md transition-colors
-                     disabled:opacity-40 disabled:cursor-not-allowed"
+                     disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
           <Wallet className="w-4 h-4" />
           {inPagamento
             ? 'Pagamento in corso…'
-            : `Paga ${formattaImporto(decisione.importo_centesimi)}`}
+            : `Registra pagamento di ${formattaImporto(decisione.importo_centesimi)}`}
         </button>
       )}
     </div>
