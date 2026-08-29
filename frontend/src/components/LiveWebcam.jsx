@@ -1,21 +1,44 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import { Camera } from 'lucide-react';
 import { useParcheggioStore } from '../store/parcheggioStore';
+import { api } from '../utils/api';
 
 const LiveWebcam = () => {
   const analisiInCorso = useParcheggioStore((s) => s.analisiInCorso);
+  const imgRef = useRef(null);
+  useEffect(() => {
+    // 1. Costruiamo l'URL in modo sicuro
+    const baseUrl = api.defaults.baseURL || 'http://localhost:5000';
+    // Aggiungiamo un timestamp per evitare cache sul flusso video
+    const streamUrl = `${baseUrl}/api/stream?t=${Date.now()}`;
+    const videoElement = imgRef.current;
+    
+    // 2. Avviamo lo streaming
+    if (videoElement) {
+      videoElement.src = streamUrl;
+    }
+    // 3. LA MAGIA: Cleanup all'uscita dalla pagina
+    return () => {
+      if (videoElement) {
+        // Assegnare una stringa vuota forza il browser ad abortire la 
+        // connessione HTTP pendente, liberando gli slot di rete!
+        videoElement.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      }
+    };
+  }, []);
 
   return (
     <div className="rounded-lg border border-tratteggio bg-quadro overflow-hidden">
       <div className="aspect-video bg-asfalto flex items-center justify-center relative">
-        {analisiInCorso ? (
-          <div className="flex flex-col items-center text-nebbia animate-pulse">
-            <Camera className="w-8 h-8 mb-3 opacity-50" />
-            <p className="font-display font-medium text-targa">Elaborazione in corso...</p>
+        {analisiInCorso && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-asfalto z-10 text-nebbia">
+            <Camera className="w-8 h-8 mb-3 opacity-50"/>
+            <p className="font-display font-medium text-targa animate-pulse">Elaborazione in corso...</p>
           </div>
-        ) : (
+        )}
+
         <img 
-          src={`${import.meta.env.VITE_BACKEND_URL}/api/stream?t=${Date.now()}`} 
+          ref={imgRef} 
           alt="Webcam live varco" 
           className="w-full h-full object-cover"
           onError={(e) => {
@@ -23,7 +46,6 @@ const LiveWebcam = () => {
             e.target.nextElementSibling.style.display = 'block';
           }}
         />
-        )}
 
         {!analisiInCorso && (
         <div className="hidden absolute text-nebbia text-sm">
