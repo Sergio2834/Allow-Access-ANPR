@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router';
-import { ScanLine, ListChecks, SlidersHorizontal, Car } from 'lucide-react';
+import { ScanLine, ListChecks, Car, Microscope } from 'lucide-react';
 import { useParcheggioStore } from '../store/parcheggioStore';
 
 const VOCI = [
   { a: '/',           etichetta: 'Varco',         Icona: ScanLine },
   { a: '/soste',      etichetta: 'Soste',         Icona: ListChecks },
+  { a: '/diagnostica',etichetta: 'Diagnostica',   Icona: Microscope },
 ];
 
 const Navbar = () => {

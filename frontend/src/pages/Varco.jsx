@@ -59,9 +59,10 @@ const Varco = () => {
     }
   };
  
-  const inviaManuale = async (targa) => {
+  const inviaManuale = async (dato) => {
     try {
-      annuncia((await transitoManuale(targa)).esito);
+      const payload = typeof dato === 'string' ? { targa: dato } : dato;
+      annuncia((await transitoManuale(payload)).esito);
     } catch (errore) {
       toast.error(errore.message);
     }
@@ -106,7 +107,7 @@ const Varco = () => {
           {/* 1. Caso: Confidenza bassa, mostra i candidati */}
           {decisione && decisione.esito === 'CONFERMA_RICHIESTA' && (
             <ConfermaTarga 
-              candidati={decisione.candidati} 
+              decisione={decisione} 
               onConferma={inviaManuale} 
               disabilitato={analisiInCorso} 
             />

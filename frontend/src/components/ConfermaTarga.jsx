@@ -3,7 +3,7 @@ import { AlertTriangle, Check } from 'lucide-react';
 import TargaChip from './TargaChip';
 import TargaManuale from './TargaManuale';
 
-const ConfermaTarga = ({ candidati, onConferma, disabilitato }) => {
+const ConfermaTarga = ({ decisione, onConferma, disabilitato }) => {
   return (
     <div className="rounded-lg border border-attesa/40 bg-attesa/10 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="flex items-start gap-3 text-attesa">
@@ -20,11 +20,20 @@ const ConfermaTarga = ({ candidati, onConferma, disabilitato }) => {
       <div className="space-y-3">
         <p className="occhiello text-attesa">Letture candidate</p>
         <div className="grid gap-3">
-          {candidati.map((cand, i) => (
+          {decisione.candidati.map((cand, i) => (
             <button
               key={cand.targa}
-              onClick={() => onConferma(cand.targa)}
               disabled={disabilitato}
+              onClick={() => onConferma({
+                targa: cand.targa,
+                confidenza: cand.confidenza,
+                occorrenze: cand.occorrenze,
+                letture_totali: cand.letture_totali,
+                frame_path: decisione.frame_path,
+                bbox_path: decisione.bbox_path,
+                crop_path: decisione.crop_path
+              })}
+              
               className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-md border border-tratteggio bg-quadro hover:border-attesa/50 transition-colors text-left disabled:opacity-50 cursor-pointer"
             >
               <div className="flex items-center gap-4">
@@ -46,7 +55,7 @@ const ConfermaTarga = ({ candidati, onConferma, disabilitato }) => {
 
       <div className="pt-4 border-t border-tratteggio/50">
          {/* Riutilizziamo il tuo componente per gestire i casi in cui nessuna candidata è giusta */}
-        <TargaManuale onInvia={onConferma} disabilitato={disabilitato} />
+        <TargaManuale onInvia={(targa)=> onConferma({targa})} disabilitato={disabilitato} />
       </div>
     </div>
   );

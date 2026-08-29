@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Varco from './pages/Varco';
 import Soste from './pages/Soste';
+import Diagnostica from './pages/Diagnostica';
 import { useParcheggioStore } from './store/parcheggioStore';
  
 const App = () => {
@@ -30,6 +31,7 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Varco />} />
           <Route path="/soste" element={<Soste />} />
+          <Route path="/diagnostica" element={<Diagnostica />} />
         </Routes>
       </main>
       <Footer />

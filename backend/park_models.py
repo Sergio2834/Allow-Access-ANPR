@@ -133,6 +133,11 @@ class Accesso(db.Model):
     confidenza = db.Column(db.Float, nullable=True)
     occorrenze = db.Column(db.Integer, nullable=True)
     letture_totali = db.Column(db.Integer, nullable=True)
+
+    # CAMPI PER LA DIAGNOSTICA
+    frame_path = db.Column(db.String(255), nullable=True)
+    bbox_path = db.Column(db.String(255), nullable=True)
+    crop_path = db.Column(db.String(255), nullable=True)
  
     def to_dict(self) -> dict:
         return {
@@ -145,4 +150,7 @@ class Accesso(db.Model):
             "confidenza": self.confidenza,
             "occorrenze": self.occorrenze,
             "letture_totali": self.letture_totali,
+            "frame_path": self.frame_path,
+            "bbox_path": self.bbox_path,
+            "crop_path": self.crop_path,
         }

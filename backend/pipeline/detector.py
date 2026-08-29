@@ -13,6 +13,7 @@ class LicensePlateDetector:
         # Effettua la predizione tramite YOLO
         results = self.model.predict(frame, conf=config.DETECTION_CONFIDENCE_THRESHOLD, verbose=False)
         crops = []
+        annotated_frame = results[0].plot() if len(results) > 0 else frame
         
         for result in results:
             boxes = result.boxes
@@ -29,4 +30,4 @@ class LicensePlateDetector:
                 if crop.size > 0:
                     crops.append(crop)
 
-        return crops
+        return crops, annotated_frame
