@@ -106,9 +106,7 @@ const Soste = () => {
                 // Una sosta ancora aperta continua a crescere: la durata va
                 // ricalcolata dal browser, perche' quella del backend e'
                 // ferma al momento della query. Dopo l'uscita e' definitiva.
-                const durata = sosta.uscita_at
-                  ? sosta.durata_secondi
-                  : secondiDa(sosta.ingresso_at);
+                const durata = sosta.uscita_at ? sosta.durata_secondi : null;
  
                 return (
                   <tr key={sosta.id} className="border-b border-tratteggio/50">

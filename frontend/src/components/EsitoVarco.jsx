@@ -84,7 +84,7 @@ const EsitoVarco = ({ decisione, onPaga, inPagamento = false }) => {
  
       {(decisione.durata_secondi != null || decisione.importo_centesimi != null) && (
         <div className="grid grid-cols-2 gap-6 mt-8 pt-6 border-t border-tratteggio">
-          {decisione.durata_secondi != null && (
+          {(decisione.durata_secondi != null && decisione.esito !== 'INGRESSO_CONSENTITO') && (
             <Dato etichetta="Durata sosta" valore={formattaDurata(decisione.durata_secondi)} />
           )}
           {decisione.importo_centesimi != null && (
