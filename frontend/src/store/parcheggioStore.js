@@ -60,10 +60,10 @@ export const useParcheggioStore = create((set, get) => ({
   },
  
   /* Ripiego quando la lettura fallisce o e' ambigua. */
-  transitoManuale: async (targa) => {
+  transitoManuale: async (payload) => {
     set({ analisiInCorso: true, errore: null, analisiIniziataAt: Date.now() });
     try {
-      const { data } = await api.post('/api/varco/manuale', { targa });
+      const { data } = await api.post('/api/varco/manuale', payload );
       set({ analisiInCorso: false, analisiIniziataAt: null, decisione: data });
       await get().caricaSosteAperte();
       return data;
@@ -93,6 +93,15 @@ export const useParcheggioStore = create((set, get) => ({
       return data;
     } catch (errore) {
       throw new Error(messaggioErrore(errore, 'Storico non disponibile.'));
+    }
+  },
+
+  caricaAccessi: async () => {
+    try {
+      const { data } = await api.get('/api/accessi');
+      return data;
+    } catch (errore) {
+      throw new Error(messaggioErrore(errore, 'Registro accessi non disponibile.'));
     }
   },
 }));

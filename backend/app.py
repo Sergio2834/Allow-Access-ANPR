@@ -8,7 +8,7 @@ from collections.abc import Iterable, Iterator
  
 import cv2
 import numpy as np
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request, Response, send_from_directory
 from services.webcam import stream_camera
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -54,13 +54,14 @@ def letture_da_frame(frame) -> list[tuple[str, float]]:
     quindi una successiva chiamata a e_valida() sarebbe ridondante.
     """
     letture = []
-    for crop in detector.detect(frame):
+    crops, annotated_frame = detector.detect(frame)
+    for crop in crops:
         testo_grezzo, score = reader.read_text(crop)
         if not testo_grezzo:
             continue
         targa = estrai_targa(testo_grezzo)
         if targa:
-            letture.append((targa, score))
+            letture.append((targa, score, frame, annotated_frame, crop))
     return letture
  
  
@@ -180,15 +181,18 @@ def process_media():
         if filename is None:
             return jsonify({"status": "error", "message": "Nessun file da analizzare"}), 400
  
-    letture = letture_da_frames(frames_da_file(os.path.join(config.UPLOAD_FOLDER, filename)))
-    if not letture:
+    letture_estese = letture_da_frames(frames_da_file(os.path.join(config.UPLOAD_FOLDER, filename)))
+    if not letture_estese:
         return jsonify({
             "status": "no_plate",
             "message": "Nessuna targa valida rilevata",
             "filename": filename,
         }), 200
  
-    risultati_voto = aggrega(letture)
+    # Estraiamo solo (targa, confidenza) per passarla alla funzione aggrega
+    letture_per_voto = [(t, s) for t, s, f, a, c in letture_estese]
+    risultati_voto = aggrega(letture_per_voto)
+    
     results_list = []
     for risultato in risultati_voto:
         results_list.append({
@@ -231,16 +235,33 @@ def varco():
     if not frames:
         return jsonify({"error": "Impossibile leggere dalla webcam"}), 500
 
-    letture = letture_da_frames(frames)
+    letture_estese = letture_da_frames(frames)
     
-    if not letture:
+    if not letture_estese:
         decisione = registra_transito(None, sorgente="webcam")
         return jsonify(decisione.to_dict()), 200
 
-    # ... [Da qui in giù è IDENTICO al codice del messaggio precedente: 
-    # calcolo candidati, controllo confidenza (CONFERMA_RICHIESTA) ecc.]
-    candidati = aggrega(letture)
+    letture_per_voto = [(t, s) for t, s, f, a, c in letture_estese]
+    candidati = aggrega(letture_per_voto)
     migliore = candidati[0]
+
+    # Cerchiamo le immagini associate alla lettura che ha vinto
+    frame_orig, frame_ann, crop_img = None, None, None
+    for targa, score, f, a, c in letture_estese:
+        if targa == migliore.targa:
+            frame_orig, frame_ann, crop_img = f, a, c
+            break
+
+    # Salviamo le 3 immagini nel RESULTS_FOLDER usando un timestamp
+    timestamp = int(time.time() * 1000)
+    base_name = f"{timestamp}_{migliore.targa}"
+    f_path = f"{base_name}_frame.jpg"
+    b_path = f"{base_name}_bbox.jpg"
+    c_path = f"{base_name}_crop.jpg"
+
+    if frame_orig is not None: cv2.imwrite(os.path.join(config.RESULTS_FOLDER, f_path), frame_orig)
+    if frame_ann is not None: cv2.imwrite(os.path.join(config.RESULTS_FOLDER, b_path), frame_ann)
+    if crop_img is not None: cv2.imwrite(os.path.join(config.RESULTS_FOLDER, c_path), crop_img)
  
     lista_candidati_dict = [
         {
@@ -255,7 +276,10 @@ def varco():
         return jsonify({
             "esito": "CONFERMA_RICHIESTA",
             "candidati": lista_candidati_dict,
-            "messaggio": "Il modello OCR è incerto. Conferma la targa corretta o inseriscila manualmente."
+            "messaggio": "Il modello OCR è incerto. Conferma la targa corretta o inseriscila manualmente.",
+            "frame_path": f_path, # AGGIUNTO
+            "bbox_path": b_path,  # AGGIUNTO
+            "crop_path": c_path   # AGGIUNTO
         }), 200
  
     decisione = registra_transito(
@@ -264,6 +288,9 @@ def varco():
         confidenza=round(migliore.confidenza, 4),
         occorrenze=migliore.occorrenze,
         letture_totali=migliore.letture_totali,
+        frame_path=f_path,
+        bbox_path=b_path,
+        crop_path=c_path
     )
     
     risposta = decisione.to_dict()
@@ -286,7 +313,16 @@ def varco_manuale():
     if not e_valida(targa):
         return jsonify({"error": "Targa non valida. Formato atteso: AA000AA."}), 400
  
-    decisione = registra_transito(targa, sorgente="manuale")
+    decisione = registra_transito(
+        targa, 
+        sorgente="manuale",
+        confidenza=dati.get("confidenza"),
+        occorrenze=dati.get("occorrenze"),
+        letture_totali=dati.get("letture_totali"),
+        frame_path=dati.get("frame_path"),
+        bbox_path=dati.get("bbox_path"),
+        crop_path=dati.get("crop_path")
+    )
     return jsonify(decisione.to_dict()), 200
  
  
@@ -344,6 +380,11 @@ def stato_parcheggio():
         "anomale": sum(1 for s in attive if s.anomala(config.ORE_MASSIME_SOSTA)),
         "tariffa_centesimi_al_minuto": config.TARIFFA_CENTESIMI_AL_MINUTO,
     }), 200
+
+@app.route("/api/images/<filename>")
+def get_image(filename):
+    """Serve le immagini salvate per il cruscotto diagnostico."""
+    return send_from_directory(config.RESULTS_FOLDER, filename)
  
 print("Riscaldamento modelli...")
 letture_da_frame(np.zeros((640, 640, 3), dtype=np.uint8))

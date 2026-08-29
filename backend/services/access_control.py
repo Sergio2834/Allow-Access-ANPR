@@ -62,6 +62,10 @@ class Decisione:
     importo_centesimi: int | None = None
     durata_secondi: int | None = None
     messaggio: str | None = None
+    # NUOVI CAMPI
+    frame_path: str | None = None
+    bbox_path: str | None = None
+    crop_path: str | None = None
  
     def to_dict(self) -> dict:
         return {
@@ -71,6 +75,9 @@ class Decisione:
             "durata_secondi": self.durata_secondi,
             "messaggio": self.messaggio,
             "sosta": self.sosta.to_dict(config.ORE_MASSIME_SOSTA) if self.sosta else None,
+            "frame_path": self.frame_path,
+            "bbox_path": self.bbox_path,
+            "crop_path": self.crop_path,
         }
  
  
@@ -90,6 +97,9 @@ def registra_transito(
     confidenza: float | None = None,
     occorrenze: int | None = None,
     letture_totali: int | None = None,
+    frame_path: str | None = None,
+    bbox_path: str | None = None,
+    crop_path: str | None = None,   
 ) -> Decisione:
     """Applica la macchina a stati e scrive nel registro accessi.
  
@@ -101,6 +111,9 @@ def registra_transito(
         decisione = Decisione(
             esito=EsitoVarco.TARGA_NON_RILEVATA,
             messaggio="Nessuna targa leggibile nei fotogrammi.",
+            frame_path=frame_path,  # AGGIUNTO QUI
+            bbox_path=bbox_path,    # AGGIUNTO QUI
+            crop_path=crop_path,    # AGGIUNTO QUI
         )
         _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
         return decisione
@@ -119,6 +132,9 @@ def registra_transito(
             sosta=sosta,
             durata_secondi=0,
             messaggio="Ingresso registrato. Il conteggio della sosta è iniziato.",
+            frame_path=frame_path,  # AGGIUNTO QUI
+            bbox_path=bbox_path,    # AGGIUNTO QUI
+            crop_path=crop_path,    # AGGIUNTO QUI
         )
         _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
         return decisione
@@ -142,6 +158,9 @@ def registra_transito(
         importo_centesimi=sosta.importo_centesimi,
         durata_secondi=sosta.durata_secondi(),
         messaggio=messaggio,
+        frame_path=frame_path,  # AGGIUNTO QUI
+        bbox_path=bbox_path,    # AGGIUNTO QUI
+        crop_path=crop_path,    # AGGIUNTO QUI
     )
     _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
     return decisione
@@ -160,6 +179,7 @@ def paga_sosta(id_sosta: int) -> Decisione | None:
  
     sosta.stato = StatoSosta.PAGATA.value
     sosta.pagata_at = adesso()
+    db.session.commit()
  
     decisione = Decisione(
         esito=EsitoVarco.USCITA_CONSENTITA,
@@ -169,8 +189,7 @@ def paga_sosta(id_sosta: int) -> Decisione | None:
         durata_secondi=sosta.durata_secondi(),
         messaggio="Pagamento registrato. Transito consentito.",
     )
-    _registra(decisione, sorgente="pagamento", confidenza=None,
-              occorrenze=None, letture_totali=None)
+    
     return decisione
  
  
@@ -190,5 +209,8 @@ def _registra(
         confidenza=confidenza,
         occorrenze=occorrenze,
         letture_totali=letture_totali,
+        frame_path=decisione.frame_path,
+        bbox_path=decisione.bbox_path,
+        crop_path=decisione.crop_path,
     ))
     db.session.commit()
