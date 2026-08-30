@@ -390,6 +390,31 @@ def stato_parcheggio():
 def get_image(filename):
     """Serve le immagini salvate per il cruscotto diagnostico."""
     return send_from_directory(config.RESULTS_FOLDER, filename)
+
+# ---------------------------------------------------------------------------
+# Reset immagini e database
+# ---------------------------------------------------------------------------
+
+@app.route("/api/reset", methods=["POST"])
+def reset_sistema():
+    """Esporta i dati (opzionale lato backend) e formatta il sistema."""
+    # 1. Svuota la cartella results contenente tutte le immagini
+    cartelle_da_pulire = [config.RESULTS_FOLDER]
+    for folder in cartelle_da_pulire:
+        shutil.rmtree(folder, ignore_errors=True)
+        os.makedirs(folder, exist_ok=True)
+    
+    # 2. Svuota le tabelle del database mantenendo lo schema intatto
+    try:
+        db.session.query(Accesso).delete()
+        db.session.query(Sosta).delete()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Errore durante il reset del DB: {str(e)}"}), 500
+
+    return jsonify({"message": "Sistema formattato con successo"}), 200
+
  
 print("Riscaldamento modelli...")
 letture_da_frame(np.zeros((640, 640, 3), dtype=np.uint8))
