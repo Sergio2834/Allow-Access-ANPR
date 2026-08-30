@@ -68,7 +68,7 @@ const Navbar = () => {
         </div>
         <button 
             onClick={handleReset}
-            className="p-2 ml-2 flex items-center justify-center gap-2 text-negato text-sm hover:bg-negato/10 rounded-md transition-colors"
+            className="p-2 ml-2 flex items-center justify-center gap-2 text-negato text-sm hover:bg-negato/10 rounded-md transition-colors cursor-pointer"
           >
             <SquareArrowRightExit className="w-4 h-4" /> Termina Sessione
           </button>
