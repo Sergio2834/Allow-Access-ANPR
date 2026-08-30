@@ -1,24 +1,23 @@
 import os
-os.environ["OMP_NUM_THREADS"] = "8" #si può rimettere 4
-os.environ["OMP_WAIT_POLICY"] = "PASSIVE" #indica che i threads inattivi non girano inutilmente
+os.environ["OMP_NUM_THREADS"] = "8"
+os.environ["OMP_WAIT_POLICY"] = "PASSIVE"
+
 import shutil
-import tempfile
 import time
 from collections.abc import Iterable, Iterator
 import json 
 import cv2
 import numpy as np
 from flask import Flask, jsonify, request, Response, send_from_directory
-from services.webcam import stream_camera
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
- 
+
 import config
 from park_models import EsitoVarco, Sosta, Accesso, StatoSosta, db
 from pipeline.detector import LicensePlateDetector
 from pipeline.reader import LicensePlateReader
 from pipeline.postprocessing import aggrega, e_valida, estrai_targa, formatta, pulisci
 from services.access_control import paga_sosta, registra_transito, soste_attive
+from services.webcam import stream_camera
  
 app = Flask(__name__)
 CORS(app)
@@ -27,7 +26,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = config.DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
  
-for folder in (config.UPLOAD_FOLDER, config.RESULTS_FOLDER, config.MODELS_FOLDER):
+for folder in (config.RESULTS_FOLDER, config.MODELS_FOLDER):
     os.makedirs(folder, exist_ok=True)
  
 with app.app_context():
@@ -38,21 +37,12 @@ detector = LicensePlateDetector()
 reader = LicensePlateReader()
 print("Modelli caricati correttamente.")
  
- 
-def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in config.ALLOWED_EXTENSIONS
- 
- 
+
 # ---------------------------------------------------------------------------
-# Pipeline
+# Core Pipeline AI
 # ---------------------------------------------------------------------------
  
 def letture_da_frame(frame) -> list[tuple[str, float]]:
-    """Rileva le targhe in un fotogramma e ne restituisce le letture valide.
- 
-    estrai_targa() restituisce solo stringhe che rispettano il formato AA000AA,
-    quindi una successiva chiamata a e_valida() sarebbe ridondante.
-    """
     letture = []
     crops, annotated_frame = detector.detect(frame)
     for crop in crops:
@@ -66,48 +56,11 @@ def letture_da_frame(frame) -> list[tuple[str, float]]:
  
  
 def letture_da_frames(frames: Iterable) -> list[tuple[str, float]]:
-    """Esegue la pipeline su una sequenza qualsiasi di fotogrammi.
- 
-    E' il punto in cui, in futuro, si innestera' la webcam del varco: bastera'
-    passare i fotogrammi letti da cv2.VideoCapture(indice_dispositivo) invece
-    di quelli estratti da un file. Nient'altro cambia.
-    """
     letture: list[tuple[str, float]] = []
     for frame in frames:
         if frame is not None:
             letture.extend(letture_da_frame(frame))
     return letture
- 
- 
-def frames_da_file(filepath: str) -> Iterator:
-    """Fotogrammi da un file video o immagine, campionati ogni FRAME_SKIP."""
-    estensione = filepath.rsplit(".", 1)[1].lower()
- 
-    if estensione not in config.VIDEO_EXTENSIONS:
-        yield cv2.imread(filepath)
-        return
- 
-    cap = cv2.VideoCapture(filepath)
-    try:
-        numero = 0
-        while True:
-            letto, frame = cap.read()
-            if not letto:
-                break
-            numero += 1
-            # I fotogrammi consecutivi sono quasi identici: campionarli non
-            # toglie informazione al voto e riduce molto il tempo di calcolo.
-            if numero % config.FRAME_SKIP == 0:
-                yield frame
-    finally:
-        cap.release()
- 
- 
-def file_piu_recente() -> str | None:
-    candidati = [f for f in os.listdir(config.UPLOAD_FOLDER) if allowed_file(f)]
-    if not candidati:
-        return None
-    return max(candidati, key=lambda f: os.path.getmtime(os.path.join(config.UPLOAD_FOLDER, f)))
 
 def genera_flusso():
     while True:
@@ -116,8 +69,9 @@ def genera_flusso():
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n') 
         time.sleep(0.04)
+
 # ---------------------------------------------------------------------------
-# Endpoint di servizio e di prova manuale (invariati)
+# Endpoints (Controllers)
 # ---------------------------------------------------------------------------
  
 @app.route("/status", methods=["GET"])
@@ -127,110 +81,48 @@ def status():
         "model_loaded": os.path.isfile(config.ACTIVE_MODEL_PATH),
         "active_model": os.path.basename(config.ACTIVE_MODEL_PATH),
     })
- 
- 
-@app.route("/clean_folders", methods=["POST"])
-def clean_folders():
-    for folder in (config.UPLOAD_FOLDER, config.RESULTS_FOLDER):
-        shutil.rmtree(folder, ignore_errors=True)
-        os.makedirs(folder, exist_ok=True)
-    return jsonify({"message": "Cartelle ripulite"}), 200
- 
- 
-@app.route("/upload", methods=["POST"])
-def upload():
-    """Salva i file e ne restituisce i nomi archiviati. Usato nelle prove manuali."""
-    files = request.files.getlist("images")
-    if not files or files[0].filename == "":
-        return jsonify({"error": "Nessun file ricevuto"}), 400
- 
-    salvati = []
-    marca = int(time.time() * 1000)
-    for indice, file in enumerate(files):
-        if file.filename == "":
-            continue
-        if not allowed_file(file.filename):
-            return jsonify({"error": f"Estensione non consentita: {file.filename}"}), 400
-        filename = f"{marca}_{indice:02d}_{secure_filename(file.filename)}"
-        file.save(os.path.join(config.UPLOAD_FOLDER, filename))
-        salvati.append(filename)
- 
-    return jsonify({
-        "message": f"{len(salvati)} file ricevuto/i",
-        "filenames": salvati,
-        "filename": salvati[-1] if salvati else None,
-    }), 200
- 
- 
-@app.route("/process", methods=["POST"])
-def process_media():
-    """Analizza UN file per volta, senza toccare le soste.
- 
-    Resta l'endpoint per provare la sola pipeline da Postman. Il varco vero
-    e' /api/varco.
-    """
-    dati = request.get_json(silent=True) or {}
-    richiesto = dati.get("filename") or request.form.get("filename")
- 
-    if richiesto:
-        filename = secure_filename(richiesto)
-        if not os.path.isfile(os.path.join(config.UPLOAD_FOLDER, filename)):
-            return jsonify({"status": "error", "message": f"File non trovato: {filename}"}), 404
-    else:
-        filename = file_piu_recente()
-        if filename is None:
-            return jsonify({"status": "error", "message": "Nessun file da analizzare"}), 400
- 
-    letture_estese = letture_da_frames(frames_da_file(os.path.join(config.UPLOAD_FOLDER, filename)))
-    if not letture_estese:
-        return jsonify({
-            "status": "no_plate",
-            "message": "Nessuna targa valida rilevata",
-            "filename": filename,
-        }), 200
- 
-    # Estraiamo solo (targa, confidenza) per passarla alla funzione aggrega
-    letture_per_voto = [(t, s) for t, s, f, a, c in letture_estese]
-    risultati_voto = aggrega(letture_per_voto)
-    
-    results_list = []
-    for risultato in risultati_voto:
-        results_list.append({
-            "plate_compact": risultato.targa,
-            "plate_ui": formatta(risultato.targa),
-            "is_valid_format": True,
-            "confidence_avg": round(risultato.confidenza, 4),
-            "occurrences": risultato.occorrenze,
-            "total_reads": risultato.letture_totali,
-        })
- 
-    return jsonify({
-        "status": "success",
-        "filename": filename,
-        "results": results_list,
-    }), 200
- 
- 
-# ---------------------------------------------------------------------------
-# Varco
-# ---------------------------------------------------------------------------
 
 @app.route("/api/stream")
 def video_feed():
     """Flusso MJPEG per mostrare l'anteprima live nel frontend."""
     return Response(genera_flusso(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route("/api/images/<filename>")
+def get_image(filename):
+    """Serve le immagini salvate per il cruscotto diagnostico."""
+    return send_from_directory(config.RESULTS_FOLDER, filename)
+
+@app.route("/api/reset", methods=["POST"])
+def reset_sistema():
+    """Esporta i dati (opzionale lato backend) e formatta il sistema."""
+    # 1. Svuota la cartella results contenente tutte le immagini
+    cartelle_da_pulire = [config.RESULTS_FOLDER]
+    for folder in cartelle_da_pulire:
+        shutil.rmtree(folder, ignore_errors=True)
+        os.makedirs(folder, exist_ok=True)
+    
+    # 2. Svuota le tabelle del database mantenendo lo schema intatto
+    try:
+        db.session.query(Accesso).delete()
+        db.session.query(Sosta).delete()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Errore durante il reset del DB: {str(e)}"}), 500
+
+    return jsonify({"message": "Sistema formattato con successo"}), 200
+
+# --- Logica Varco ---
+
 @app.route("/api/varco", methods=["POST"])
 def varco():
-    """Transito al varco catturando fotogrammi in realtime dalla webcam."""
     frames = []
-    
     # Cattura N fotogrammi distanziati di poco
     for _ in range(config.FRAMES_PER_LETTURA):
         frame = stream_camera.get_frame()
         if frame is not None:
             frames.append(frame)
-        time.sleep(0.1)  # Lascia scorrere 100ms tra uno scatto e l'altro
+        time.sleep(0.1)
         
     if not frames:
         return jsonify({"error": "Impossibile leggere dalla webcam"}), 500
@@ -279,9 +171,9 @@ def varco():
             "esito": "CONFERMA_RICHIESTA",
             "candidati": lista_candidati_dict,
             "messaggio": "Il modello OCR è incerto. Conferma la targa corretta o inseriscila manualmente.",
-            "frame_path": f_path, # AGGIUNTO
-            "bbox_path": b_path,  # AGGIUNTO
-            "crop_path": c_path,   # AGGIUNTO
+            "frame_path": f_path,
+            "bbox_path": b_path,
+            "crop_path": c_path,
             "candidati_json": candidati_str
         }), 200
  
@@ -305,12 +197,7 @@ def varco():
  
 @app.route("/api/varco/manuale", methods=["POST"])
 def varco_manuale():
-    """Transito con targa digitata a mano.
- 
-    Ripiego indispensabile: se l'OCR sbaglia durante la dimostrazione, il
-    flusso non si blocca. E' anche cio' che nei parcheggi reali fa il citofono
-    con l'operatore.
-    """
+
     dati = request.get_json(silent=True) or {}
     targa = pulisci(dati.get("targa", ""))
  
@@ -329,19 +216,12 @@ def varco_manuale():
         candidati_json=dati.get("candidati_json")
     )
     return jsonify(decisione.to_dict()), 200
- 
- 
-# ---------------------------------------------------------------------------
-# Soste e registro
-# ---------------------------------------------------------------------------
+
+# --- Logica Gestione e Diagnostica ---
  
 @app.route("/api/soste", methods=["GET"])
 def elenco_soste():
-    """Elenco delle soste.
- 
-    Con ?stato=attiva restituisce i transiti non conclusi (APERTA e
-    DA_PAGARE); con ?stato=APERTA|DA_PAGARE|PAGATA filtra sul singolo stato.
-    """
+
     stato = (request.args.get("stato") or "").upper()
  
     if stato in ("ATTIVA", "ATTIVE"):
@@ -352,8 +232,7 @@ def elenco_soste():
         soste = Sosta.query.order_by(Sosta.ingresso_at.desc()).limit(200).all()
  
     return jsonify([s.to_dict(config.ORE_MASSIME_SOSTA) for s in soste]), 200
- 
- 
+
 @app.route("/api/soste/<int:id_sosta>/pagamento", methods=["POST"])
 def pagamento(id_sosta: int):
     """Pagamento fittizio della sosta in attesa di saldo.
@@ -365,14 +244,12 @@ def pagamento(id_sosta: int):
     if decisione is None:
         return jsonify({"error": "Sosta inesistente o non in attesa di pagamento."}), 404
     return jsonify(decisione.to_dict()), 200
- 
- 
+
 @app.route("/api/accessi", methods=["GET"])
 def elenco_accessi():
     """Registro delle rilevazioni: e' da qui che escono i numeri della tesi."""
     accessi = Accesso.query.order_by(Accesso.creato_at.desc()).limit(200).all()
     return jsonify([a.to_dict() for a in accessi]), 200
- 
  
 @app.route("/api/parcheggio", methods=["GET"])
 def stato_parcheggio():
@@ -386,41 +263,13 @@ def stato_parcheggio():
         "tariffa_centesimi_al_minuto": config.TARIFFA_CENTESIMI_AL_MINUTO,
     }), 200
 
-@app.route("/api/images/<filename>")
-def get_image(filename):
-    """Serve le immagini salvate per il cruscotto diagnostico."""
-    return send_from_directory(config.RESULTS_FOLDER, filename)
-
 # ---------------------------------------------------------------------------
-# Reset immagini e database
+# Avvio Applicazione
 # ---------------------------------------------------------------------------
 
-@app.route("/api/reset", methods=["POST"])
-def reset_sistema():
-    """Esporta i dati (opzionale lato backend) e formatta il sistema."""
-    # 1. Svuota la cartella results contenente tutte le immagini
-    cartelle_da_pulire = [config.RESULTS_FOLDER]
-    for folder in cartelle_da_pulire:
-        shutil.rmtree(folder, ignore_errors=True)
-        os.makedirs(folder, exist_ok=True)
-    
-    # 2. Svuota le tabelle del database mantenendo lo schema intatto
-    try:
-        db.session.query(Accesso).delete()
-        db.session.query(Sosta).delete()
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"Errore durante il reset del DB: {str(e)}"}), 500
-
-    return jsonify({"message": "Sistema formattato con successo"}), 200
-
- 
 print("Riscaldamento modelli...")
 letture_da_frame(np.zeros((640, 640, 3), dtype=np.uint8))
 print("Modelli pronti.")
 
 if __name__ == "__main__":
-    # use_reloader=False: con il reloader Flask avvia un processo figlio e i
-    # modelli verrebbero caricati due volte.
     app.run(debug=True, port=5000, use_reloader=False)
