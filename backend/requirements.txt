@@ -12,3 +12,7 @@ Flask
 flask-cors
 Werkzeug
 Flask-SQLAlchemy
+
+#esecuzione del modello YOLO esportato in ONNX
+onnx
+onnxruntime
