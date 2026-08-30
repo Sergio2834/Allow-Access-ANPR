@@ -104,4 +104,16 @@ export const useParcheggioStore = create((set, get) => ({
       throw new Error(messaggioErrore(errore, 'Registro accessi non disponibile.'));
     }
   },
+
+  resetSistema: async () => {
+    try {
+      await api.post('/api/reset');
+      // Ricarica i dati (che ora saranno vuoti) per aggiornare la UI istantaneamente
+      await get().caricaStorico();
+      await get().caricaAccessi();
+      return true;
+    } catch (errore) {
+      throw new Error(messaggioErrore(errore, 'Impossibile resettare il sistema.'));
+    }
+  },
 }));
