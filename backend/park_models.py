@@ -138,6 +138,7 @@ class Accesso(db.Model):
     frame_path = db.Column(db.String(255), nullable=True)
     bbox_path = db.Column(db.String(255), nullable=True)
     crop_path = db.Column(db.String(255), nullable=True)
+    candidati_json = db.Column(db.Text, nullable=True)
  
     def to_dict(self) -> dict:
         return {
@@ -153,4 +154,5 @@ class Accesso(db.Model):
             "frame_path": self.frame_path,
             "bbox_path": self.bbox_path,
             "crop_path": self.crop_path,
+            "candidati_json": self.candidati_json,
         }

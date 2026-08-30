@@ -66,6 +66,7 @@ class Decisione:
     frame_path: str | None = None
     bbox_path: str | None = None
     crop_path: str | None = None
+    candidati_json: str | None = None
  
     def to_dict(self) -> dict:
         return {
@@ -78,6 +79,7 @@ class Decisione:
             "frame_path": self.frame_path,
             "bbox_path": self.bbox_path,
             "crop_path": self.crop_path,
+            "candidati_json": self.candidati_json,
         }
  
  
@@ -99,7 +101,8 @@ def registra_transito(
     letture_totali: int | None = None,
     frame_path: str | None = None,
     bbox_path: str | None = None,
-    crop_path: str | None = None,   
+    crop_path: str | None = None,
+    candidati_json: str | None = None,   
 ) -> Decisione:
     """Applica la macchina a stati e scrive nel registro accessi.
  
@@ -114,6 +117,7 @@ def registra_transito(
             frame_path=frame_path,  # AGGIUNTO QUI
             bbox_path=bbox_path,    # AGGIUNTO QUI
             crop_path=crop_path,    # AGGIUNTO QUI
+            candidati_json=candidati_json,
         )
         _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
         return decisione
@@ -135,6 +139,7 @@ def registra_transito(
             frame_path=frame_path,  # AGGIUNTO QUI
             bbox_path=bbox_path,    # AGGIUNTO QUI
             crop_path=crop_path,    # AGGIUNTO QUI
+            candidati_json=candidati_json,
         )
         _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
         return decisione
@@ -161,6 +166,7 @@ def registra_transito(
         frame_path=frame_path,  # AGGIUNTO QUI
         bbox_path=bbox_path,    # AGGIUNTO QUI
         crop_path=crop_path,    # AGGIUNTO QUI
+        candidati_json=candidati_json,
     )
     _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
     return decisione
@@ -212,5 +218,6 @@ def _registra(
         frame_path=decisione.frame_path,
         bbox_path=decisione.bbox_path,
         crop_path=decisione.crop_path,
+        candidati_json=decisione.candidati_json,
     ))
     db.session.commit()

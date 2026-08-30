@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Microscope, ScanLine, Calculator, ServerCrash } from 'lucide-react';
+import { X, Microscope, ScanLine, Calculator, ServerCrash, ScanEye } from 'lucide-react';
 import TargaChip from './TargaChip';
 import { formattaDataOra } from '../utils/formatta';
 
@@ -78,6 +78,25 @@ const Riepilogo = ({ accesso, onClose }) => {
             </div>
           )}
 
+          {accesso.candidati_json && (
+            <div className="mt-6 border-t border-tratteggio pt-6">
+              <p className="flex items-center gap-2 occhiello mb-4">
+                <ScanEye className="w-4 h-4" /> Letture OCR
+              </p>
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {JSON.parse(accesso.candidati_json).map((cand, idx) => (
+                  <div key={cand.targa} className="flex flex-col items-start bg-asfalto p-3 rounded border border-tratteggio">
+                    <span className="text-xs text-nebbia mb-1">Opzione {idx + 1}</span>
+                    <TargaChip targa={cand.targa} dimensione="sm" />
+                    <span className="text-xs mt-2 text-nebbia">
+                    Confidenza: {(cand.confidenza * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Sezione 3: Immagini (Computer Vision) */}
           {haImmagini ? (
             <div>
@@ -114,7 +133,7 @@ const Riepilogo = ({ accesso, onClose }) => {
           ) : (
             <div className="flex items-center gap-3 text-nebbia p-6 bg-asfalto/50 rounded-md border border-tratteggio border-dashed">
               <ServerCrash className="w-5 h-5" />
-              <p className="text-sm">Nessuna immagine disponibile per questo transito (inserimento manuale o vecchi record).</p>
+              <p className="text-sm">Nessuna immagine disponibile per questo transito (inserimento manuale).</p>
             </div>
           )}
           
