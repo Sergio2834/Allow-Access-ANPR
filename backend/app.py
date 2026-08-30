@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import time
 from collections.abc import Iterable, Iterator
- 
+import json 
 import cv2
 import numpy as np
 from flask import Flask, jsonify, request, Response, send_from_directory
@@ -272,6 +272,8 @@ def varco():
         } for c in candidati
     ]
 
+    candidati_str = json.dumps(lista_candidati_dict)
+
     if migliore.confidenza < config.CONFIDENZA_MINIMA_AUTOMATICA:
         return jsonify({
             "esito": "CONFERMA_RICHIESTA",
@@ -279,7 +281,8 @@ def varco():
             "messaggio": "Il modello OCR è incerto. Conferma la targa corretta o inseriscila manualmente.",
             "frame_path": f_path, # AGGIUNTO
             "bbox_path": b_path,  # AGGIUNTO
-            "crop_path": c_path   # AGGIUNTO
+            "crop_path": c_path,   # AGGIUNTO
+            "candidati_json": candidati_str
         }), 200
  
     decisione = registra_transito(
@@ -290,7 +293,8 @@ def varco():
         letture_totali=migliore.letture_totali,
         frame_path=f_path,
         bbox_path=b_path,
-        crop_path=c_path
+        crop_path=c_path,
+        candidati_json=candidati_str
     )
     
     risposta = decisione.to_dict()
@@ -321,7 +325,8 @@ def varco_manuale():
         letture_totali=dati.get("letture_totali"),
         frame_path=dati.get("frame_path"),
         bbox_path=dati.get("bbox_path"),
-        crop_path=dati.get("crop_path")
+        crop_path=dati.get("crop_path"),
+        candidati_json=dati.get("candidati_json")
     )
     return jsonify(decisione.to_dict()), 200
  

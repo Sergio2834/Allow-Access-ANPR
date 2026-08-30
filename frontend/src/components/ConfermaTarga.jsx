@@ -31,7 +31,8 @@ const ConfermaTarga = ({ decisione, onConferma, disabilitato }) => {
                 letture_totali: cand.letture_totali,
                 frame_path: decisione.frame_path,
                 bbox_path: decisione.bbox_path,
-                crop_path: decisione.crop_path
+                crop_path: decisione.crop_path,
+                candidati_json: decisione.candidati_json
               })}
               
               className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-md border border-tratteggio bg-quadro hover:border-attesa/50 transition-colors text-left disabled:opacity-50 cursor-pointer"
