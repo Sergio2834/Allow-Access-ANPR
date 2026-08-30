@@ -98,7 +98,7 @@ const Diagnostica = () => {
                   </td>
                   <td className="py-3 pr-5 text-right">
                     <button 
-                      className="inline-flex items-center gap-1.5 text-nebbia group-hover:text-targa transition-colors"
+                      className="inline-flex items-center gap-1.5 text-nebbia group-hover:text-targa transition-colors cursor-pointer"
                       onClick={(e) => { e.stopPropagation(); setAccessoSelezionato(accesso); }}
                     >
                       <Eye className="w-4 h-4" /> Apri
