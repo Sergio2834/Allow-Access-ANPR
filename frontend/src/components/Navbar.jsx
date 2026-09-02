@@ -109,7 +109,7 @@ const Navbar = () => {
                 {user.ruolo === 'admin' && (
                   <>
                     <NavLink
-                      to="/registrazione"
+                      to="/signup"
                       onClick={() => setShowMenu(false)}
                       className="flex items-center px-4 py-2.5 mx-2 rounded-md text-nebbia text-sm hover:bg-quadro hover:text-white gap-3 cursor-pointer transition-colors"
                     >
