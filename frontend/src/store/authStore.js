@@ -30,6 +30,22 @@ export const useAuthStore = create((set) => ({
     }
   },
 
+  signup: async (username, password, ruolo) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Chiamata all'endpoint che abbiamo protetto ieri nel backend
+      const response = await axios.post(`${API_URL}/signup`, { username, password, ruolo });
+      set({ isLoading: false });
+      return response.data;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error.response?.data?.message || "Errore durante la registrazione"
+      });
+      throw error;
+    }
+  },
+
   fetchUser: async () => {
     set({ fetchingUser: true, error: null });
     try {
