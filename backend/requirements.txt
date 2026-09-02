@@ -16,3 +16,6 @@ Flask-SQLAlchemy
 #esecuzione del modello YOLO esportato in ONNX
 onnx
 onnxruntime
+
+#autenticazione
+PyJWT

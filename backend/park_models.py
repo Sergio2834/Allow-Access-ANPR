@@ -1,56 +1,20 @@
-"""
-Modello dati del parcheggio.
- 
-Due sole entita':
- 
-  Sosta    il periodo in cui un veicolo e' dentro il parcheggio. E' cio' su
-           cui si basa la logica del varco a stato.
- 
-  Accesso  il registro di OGNI singola rilevazione, riuscita o fallita, con i
-           dati della pipeline. E' separato da Sosta perche' serve a uno scopo
-           diverso: e' da qui che escono i numeri del capitolo dei risultati
-           della tesi, mentre Sosta serve al funzionamento del sistema.
- 
-Non esiste una tabella Veicolo: nel modello a varco unico non c'e' una fase di
-registrazione, la targa entra nel sistema quando l'auto entra. L'elenco dei
-veicoli visti si ottiene raggruppando le soste per targa.
-"""
- 
-from __future__ import annotations
- 
+from __future__ import annotations 
 from datetime import datetime, timedelta, timezone
 from enum import Enum
- 
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
  
 db = SQLAlchemy()
- 
- 
+
 def adesso() -> datetime:
-    """Istante corrente in UTC, senza fuso.
- 
-    SQLite non conserva il fuso orario: memorizzare sempre UTC naive evita di
-    confrontare istanti con e senza fuso, che in Python solleva TypeError.
-    La conversione all'ora locale avviene nel frontend.
-    """
     return datetime.now(timezone.utc).replace(tzinfo=None)
- 
- 
+
 def _iso(momento: datetime | None) -> str | None:
-    """ISO 8601 con la Z finale, cosi' il browser lo interpreta come UTC."""
     return momento.isoformat() + "Z" if momento else None
  
  
-class StatoSosta(str, Enum):
-    """Ciclo di vita di una sosta.
- 
-    Il passaggio da APERTA a DA_PAGARE avviene alla lettura di USCITA: e' li'
-    che il cronometro si ferma e l'importo viene fissato. Non esiste piu' lo
-    stato intermedio "pagata ma ancora dentro" della versione precedente,
-    perche' il pagamento e' l'ultimo atto e non ne precede un altro.
-    """
- 
-    APERTA = "APERTA"        # veicolo dentro, cronometro in corso
+class StatoSosta(str, Enum): 
+    APERTA = "APERTA"        # veicolo dentro
     DA_PAGARE = "DA_PAGARE"  # uscita rilevata, sosta chiusa, importo fissato
     PAGATA = "PAGATA"        # importo saldato, transito concluso
  
@@ -61,9 +25,7 @@ class EsitoVarco(str, Enum):
     INGRESSO_CONSENTITO = "INGRESSO_CONSENTITO"
     PAGAMENTO_RICHIESTO = "PAGAMENTO_RICHIESTO"
     TARGA_NON_RILEVATA = "TARGA_NON_RILEVATA"
-    # Prodotto dall'endpoint di pagamento, non dal varco: e' la conferma che
-    # il transito puo' avvenire.
-    USCITA_CONSENTITA = "USCITA_CONSENTITA"
+    USCITA_CONSENTITA = "USCITA_CONSENTITA" # Prodotto dall'endpoint di pagamento: il transito puo' avvenire.
  
  
 class Sosta(db.Model):
@@ -87,11 +49,6 @@ class Sosta(db.Model):
         return self.stato in (StatoSosta.APERTA.value, StatoSosta.DA_PAGARE.value)
  
     def durata_secondi(self) -> int:
-        """Durata della sosta.
- 
-        Una volta rilevata l'uscita il valore e' definitivo; finche' la sosta
-        e' aperta cresce con il tempo corrente.
-        """
         fine = self.uscita_at or adesso()
         return max(0, int((fine - self.ingresso_at).total_seconds()))
  
@@ -114,8 +71,6 @@ class Sosta(db.Model):
  
  
 class Accesso(db.Model):
-    """Registro di una singola rilevazione al varco."""
- 
     __tablename__ = "accessi"
  
     id = db.Column(db.Integer, primary_key=True)
@@ -155,4 +110,28 @@ class Accesso(db.Model):
             "bbox_path": self.bbox_path,
             "crop_path": self.crop_path,
             "candidati_json": self.candidati_json,
+        }
+
+class Utente(db.Model):
+    __tablename__ = 'utenti'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    ruolo = db.Column(db.String(20), nullable=False, default="gestore") # "gestore" o "admin"
+
+    def set_password(self, password):
+        """Genera e salva l'hash della password (equivalente a bcrypt.hash)"""
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        """Verifica che la password corrisponda (equivalente a bcrypt.compareSync)"""
+        return check_password_hash(self.password_hash, password)
+
+    def to_dict(self):
+        """Esclude la password dai dati inviati al frontend"""
+        return {
+            "id": self.id,
+            "username": self.username,
+            "ruolo": self.ruolo
         }

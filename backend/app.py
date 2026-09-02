@@ -4,15 +4,17 @@ os.environ["OMP_WAIT_POLICY"] = "PASSIVE"
 
 import shutil
 import time
-from collections.abc import Iterable, Iterator
+import config
 import json 
 import cv2
+import jwt
 import numpy as np
+from collections.abc import Iterable, Iterator
 from flask import Flask, jsonify, request, Response, send_from_directory
 from flask_cors import CORS
+from datetime import datetime, timedelta, timezone
 
-import config
-from park_models import EsitoVarco, Sosta, Accesso, StatoSosta, db
+from park_models import EsitoVarco, Sosta, Accesso, Utente, StatoSosta, db
 from pipeline.detector import LicensePlateDetector
 from pipeline.reader import LicensePlateReader
 from pipeline.postprocessing import aggrega, e_valida, estrai_targa, formatta, pulisci
@@ -20,7 +22,7 @@ from services.access_control import paga_sosta, registra_transito, soste_attive
 from services.webcam import stream_camera
  
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
  
 app.config["SQLALCHEMY_DATABASE_URI"] = config.DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -36,6 +38,101 @@ print("Caricamento modelli YOLO e PaddleOCR in corso...")
 detector = LicensePlateDetector()
 reader = LicensePlateReader()
 print("Modelli caricati correttamente.")
+
+# ---------------------------------------------------------------------------
+# Autenticazione e RBAC
+# ---------------------------------------------------------------------------
+
+@app.route("/api/signup", methods=["POST"])
+def signup():
+    """Registrazione (Solo per sviluppo/demo)."""
+    dati = request.get_json()
+    username = dati.get("username")
+    password = dati.get("password")
+    ruolo = dati.get("ruolo", "gestore") # Di default crea un utente standard
+
+    if ruolo not in ["admin", "gestore"]:
+        ruolo = "gestore"
+
+    if not username or not password:
+        return jsonify({"message": "Username e password sono obbligatori"}), 400
+
+    if Utente.query.filter_by(username=username).first():
+        return jsonify({"message": "Username già in uso"}), 400
+
+    nuovo_utente = Utente(username=username, ruolo=ruolo)
+    nuovo_utente.set_password(password)
+    
+    db.session.add(nuovo_utente)
+    db.session.commit()
+
+    return jsonify({"message": "Utente registrato con successo", "user": nuovo_utente.to_dict()}), 201
+
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    dati = request.get_json()
+    username = dati.get("username")
+    password = dati.get("password")
+
+    utente = Utente.query.filter_by(username=username).first()
+
+    if not utente or not utente.check_password(password):
+        return jsonify({"message": "Credenziali non valide"}), 401
+
+    # Generiamo il Token JWT valido per 7 giorni
+    token = jwt.encode({
+        "id": utente.id,
+        "ruolo": utente.ruolo,
+        "exp": datetime.now(timezone.utc) + timedelta(days=7)
+    }, config.JWT_SECRET, algorithm="HS256")
+
+    risposta = jsonify({
+        "message": "Accesso effettuato correttamente",
+        "user": utente.to_dict()
+    })
+
+    # Impostiamo il Token nel cookie (Esattamente come in Express)
+    risposta.set_cookie(
+        "token", 
+        token, 
+        httponly=True, 
+        secure=False, # Metti True se in futuro usi HTTPS
+        samesite="Lax", 
+        max_age=7 * 24 * 60 * 60 # 7 giorni in secondi
+    )
+    
+    return risposta, 200
+
+
+@app.route("/api/fetch-user", methods=["GET"])
+def fetch_user():
+    # Leggiamo il cookie dalla richiesta
+    token = request.cookies.get("token")
+    if not token:
+        return jsonify({"message": "Non autorizzato, token mancante"}), 401
+
+    try:
+        decoded = jwt.decode(token, config.JWT_SECRET, algorithms=["HS256"])
+        utente = db.session.get(Utente, decoded["id"])
+        
+        if not utente:
+            return jsonify({"message": "Utente non trovato"}), 404
+            
+        return jsonify({"user": utente.to_dict()}), 200
+        
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token scaduto, effettua nuovamente il login"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Token non valido"}), 401
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    risposta = jsonify({"message": "Logout effettuato correttamente!"})
+    # Eliminiamo il cookie
+    risposta.delete_cookie("token")
+    return risposta, 200
  
 
 # ---------------------------------------------------------------------------
