@@ -360,6 +360,46 @@ def stato_parcheggio():
         "tariffa_centesimi_al_minuto": config.TARIFFA_CENTESIMI_AL_MINUTO,
     }), 200
 
+@app.route("/api/statistiche/soste", methods=["GET"])
+def statistiche_soste():
+    """
+    Calcola le metriche di business per il parcheggio.
+    Esclude le soste anomale (durata > ORE_MASSIME_SOSTA) per non sballare la media.
+    """
+    # Prendiamo solo le soste concluse (che hanno un'uscita)
+    soste_chiuse = Sosta.query.filter(Sosta.uscita_at.isnot(None)).all()
+    soste_totali = Sosta.query.all()
+    
+    tempi_validi_minuti = []
+    # Inizializziamo un dizionario con tutte le 24 ore a zero veicoli
+    ore_picco = {f"{i:02d}:00": 0 for i in range(24)}
+
+    for sosta in soste_chiuse:
+        durata_secondi = (sosta.uscita_at - sosta.ingresso_at).total_seconds()
+        durata_ore = durata_secondi / 3600
+        
+        # Filtro di sicurezza: escludiamo le soste anomale dal calcolo della media
+        if durata_ore <= config.ORE_MASSIME_SOSTA:
+            tempi_validi_minuti.append(durata_secondi / 60)
+            
+    for sosta in soste_totali:
+        dt_utc = sosta.ingresso_at.replace(tzinfo=timezone.utc)
+        dt_locale = dt_utc.astimezone()
+        ora_ingresso = dt_locale.strftime("%H:00")
+        ore_picco[ora_ingresso] += 1
+
+    # Calcolo Media Matematica
+    tempo_medio_minuti = sum(tempi_validi_minuti) / len(tempi_validi_minuti) if tempi_validi_minuti else 0
+    
+    # Formattiamo i dati per la libreria Recharts (React)
+    dati_grafico_affluenza = [{"fascia": ora, "veicoli": conteggio} for ora, conteggio in ore_picco.items()]
+
+    return jsonify({
+        "tempo_medio_minuti": round(tempo_medio_minuti),
+        "totale_soste_valutate": len(tempi_validi_minuti),
+        "affluenza": dati_grafico_affluenza
+    }), 200
+
 # ---------------------------------------------------------------------------
 # Avvio Applicazione
 # ---------------------------------------------------------------------------

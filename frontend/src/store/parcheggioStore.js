@@ -26,6 +26,7 @@ export const useParcheggioStore = create((set, get) => ({
   file: null,
   decisione: null,
   analisiIniziataAt: null,
+  statisticheGestionali: null,
 
   impostaFile: (file) => set({ file, decisione: null }),
   azzeraVarco: () => set({ file: null, decisione: null }),
@@ -40,6 +41,16 @@ export const useParcheggioStore = create((set, get) => ({
       // dei veicoli dentro non e' disponibile.
       set({ errore: messaggioErrore(errore, 'Elenco soste non disponibile.') });
       return [];
+    }
+  },
+
+  caricaStatisticheSoste: async () => {
+    try {
+      // API_URL è già definito nel tuo file
+      const response = await api.get('api/statistiche/soste');
+      set({ statisticheGestionali: response.data });
+    } catch (error) {
+      console.error("Errore nel caricamento delle statistiche:", error);
     }
   },
  
