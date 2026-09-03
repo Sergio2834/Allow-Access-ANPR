@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Loader, AlertTriangle } from 'lucide-react';
+import { Loader, AlertTriangle, BarChart3, Wallet, X } from 'lucide-react';
 import TargaChip from '../components/TargaChip';
+import EsitoVarco from '../components/EsitoVarco';
+import StatisticheModale from '../components/StatisticheModale';
 import { useParcheggioStore } from '../store/parcheggioStore';
 import { formattaDataOra, formattaDurata, formattaImporto, secondiDa } from '../utils/formatta';
  
@@ -22,8 +24,12 @@ const FILTRI = [
 const Soste = () => {
   const [soste, setSoste] = useState([]);
   const [caricamento, setCaricamento] = useState(true);
+  const [showStatistiche, setShowStatistiche] = useState(false);
   const [filtro, setFiltro] = useState('TUTTE');
+  const pagaSosta = useParcheggioStore((s) => s.pagaSosta);
   const caricaStorico = useParcheggioStore((s) => s.caricaStorico);
+  const pagamentoInCorso = useParcheggioStore((s) => s.pagamentoInCorso);
+  const [modalPagamento, setModalPagamento] = useState(null);
  
   useEffect(() => {
     const carica = async () => {
@@ -46,7 +52,43 @@ const Soste = () => {
       </div>
     );
   }
- 
+  
+  const apriModalePagamento = (sosta) => {
+    setModalPagamento({
+      idSosta: sosta.id,
+      decisione: {
+        esito: 'PAGAMENTO_RICHIESTO',
+        targa: sosta.targa,
+        durata_secondi: sosta.durata_secondi,
+        importo_centesimi: sosta.importo_centesimi,
+        messaggio: 'Sosta recuperata dal registro storico.',
+      }
+    });
+  };
+
+  const eseguiPagamento = () => {
+    if (!modalPagamento) return;
+    const { idSosta, decisione } = modalPagamento;
+
+    toast.promise(
+      pagaSosta(idSosta),
+      {
+        loading: `Registrazione pagamento per ${decisione.targa}...`,
+        success: `Pagamento saldato per ${decisione.targa}!`,
+        error: 'Errore durante la registrazione del pagamento.',
+      }
+    ).then(async (nuovaDecisione) => {
+      // nuovaDecisione contiene "USCITA_CONSENTITA" dal backend. 
+      // Aggiorniamo il modale per far diventare EsitoVarco verde!
+      setModalPagamento({
+        idSosta: idSosta,
+        decisione: nuovaDecisione
+      });
+      // Aggiorniamo anche la tabella in background
+      setSoste(await caricaStorico());
+    }).catch(console.error);
+  };
+
   const visibili = filtro === 'TUTTE' ? soste : soste.filter((s) => s.stato === filtro);
   // Solo le soste effettivamente saldate concorrono all'incasso: quelle in
   // attesa hanno un importo fissato ma non ancora riscosso.
@@ -68,6 +110,14 @@ const Soste = () => {
           <p className="occhiello">Incassato</p>
           <p className="font-mono text-2xl mt-1 tabular-nums">{formattaImporto(incasso)}</p>
         </div>
+        <button
+          onClick={() => setShowStatistiche(true)}
+          className="ml-4 mb-1 flex items-center gap-2 px-4 py-2 bg-quadro border border-tratteggio text-nebbia hover:text-white hover:border-banda/50 hover:bg-banda/10 rounded-md transition-colors cursor-pointer"
+        >
+          <BarChart3 className="w-4 h-4"/>
+          <span className="text-sm font-medium">Analisi Avanzata</span>
+
+        </button>
       </div>
  
       <div className="flex gap-1 mt-8">
@@ -75,7 +125,7 @@ const Soste = () => {
           <button
             key={chiave}
             onClick={() => setFiltro(chiave)}
-            className={`px-3 py-2 rounded-md text-sm transition-colors ${
+            className={`px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
               filtro === chiave
                 ? 'bg-banda/20 text-targa'
                 : 'text-nebbia hover:text-targa hover:bg-tratteggio/60'
@@ -123,16 +173,49 @@ const Soste = () => {
                       {formattaImporto(sosta.importo_centesimi)}
                     </td>
                     <td className={`py-3 whitespace-nowrap ${stato.classe}`}>
-                      <span className="flex items-center gap-1.5">
-                        {sosta.anomala && <AlertTriangle className="w-3.5 h-3.5 text-negato" />}
-                        {stato.etichetta}
-                      </span>
+                      {sosta.stato === 'DA_PAGARE' ? (
+                        <button
+                          onClick={() => apriModalePagamento(sosta)}
+                          className=" flex items-center gap-1.5  py-2 hover:bg-attesa/20 text-attesa rounded-md text-sm transition-colors shadow-sm cursor-pointer"
+                        >
+                          Da saldare
+                        </button>
+                      ) : (
+                        <span className="flex items-center gap-1.5">
+                          {sosta.anomala && <AlertTriangle className="w-3.5 h-3.5 text-negato" />}
+                          {stato.etichetta}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          {showStatistiche && (
+            <StatisticheModale onClose={() => setShowStatistiche(false)} />
+          )}
+
+          {modalPagamento && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-asfalto/90 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="relative w-full max-w-lg">
+                {/* Bottone per chiudere il modale */}
+                <button
+                  onClick={() => setModalPagamento(null)}
+                  className="absolute -top-12 right-0 p-2 text-nebbia hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-8 h-8" />
+                </button>
+
+                {/* Il componente EsitoVarco riutilizzato */}
+                <EsitoVarco
+                  decisione={modalPagamento.decisione}
+                  onPaga={eseguiPagamento}
+                  inPagamento={pagamentoInCorso}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
  
