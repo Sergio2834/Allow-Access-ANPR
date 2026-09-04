@@ -22,7 +22,12 @@ from services.access_control import paga_sosta, registra_transito, soste_attive
 from services.webcam import stream_camera
  
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
+CORS(app, supports_credentials=True, origins=[
+    "http://localhost:5173", 
+    "http://127.0.0.1:5173",
+    "http://localhost", #per avviare con Docker
+    "http://127.0.0.1"
+    ])
  
 app.config["SQLALCHEMY_DATABASE_URI"] = config.DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -409,4 +414,4 @@ letture_da_frame(np.zeros((640, 640, 3), dtype=np.uint8))
 print("Modelli pronti.")
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
