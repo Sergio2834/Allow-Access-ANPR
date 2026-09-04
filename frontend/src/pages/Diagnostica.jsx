@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Loader, AlertTriangle, Eye } from 'lucide-react';
+import { Loader, AlertTriangle, Eye, Activity, PieChart as PieChartIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import TargaChip from '../components/TargaChip';
 import Riepilogo from '../components/Riepilogo';
 import { useParcheggioStore } from '../store/parcheggioStore';
@@ -40,6 +41,19 @@ const Diagnostica = () => {
   const tassoSuccesso = tentativiWebcam.length 
     ? Math.round((successiWebcam.length / tentativiWebcam.length) * 100) 
     : 0;
+  const datiTorta = [
+    { name: 'Letture Riuscite', value: successiWebcam.length, color: '#3b82f6' }, // Blu banda
+    { name: 'Letture Fallite', value: tentativiWebcam.length - successiWebcam.length, color: '#ef4444' } // Rosso negato
+  ];
+  
+  const datiConfidenza = accessi
+    .filter(a => a.sorgente === 'webcam' && a.confidenza != null)
+    // Ordiniamo dal più vecchio al più recente per l'asse temporale del grafico
+    .sort((a, b) => new Date(a.creato_at) - new Date(b.creato_at))
+    .map(a => ({
+      orario: new Date(a.creato_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+      confidenza: parseFloat((a.confidenza * 100).toFixed(1))
+    }));
 
   return (
     <section className="px-5 md:px-8 py-10 max-w-6xl mx-auto w-full">
@@ -56,6 +70,72 @@ const Diagnostica = () => {
           <p className="font-mono text-2xl mt-1 tabular-nums">{tassoSuccesso}%</p>
         </div>
       </div>
+
+      {tentativiWebcam.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          
+          {/* Grafico Tasso di Successo */}
+          <div className="bg-asfalto/40 p-5 rounded-lg border border-tratteggio col-span-1 flex flex-col">
+            <h3 className="text-sm font-medium text-nebbia mb-4 flex items-center gap-2 uppercase tracking-wider">
+               <PieChartIcon className="w-4 h-4" /> Distribuzione Esiti
+            </h3>
+            <div className="flex-1 min-h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie 
+                    data={datiTorta} 
+                    dataKey="value" 
+                    innerRadius={60} 
+                    outerRadius={80} 
+                    stroke="none"
+                    paddingAngle={3}
+                  >
+                    {datiTorta.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1f2229', borderColor: '#2e333d', borderRadius: '0.5rem', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Grafico Andamento Confidenza */}
+          <div className="bg-asfalto/40 p-5 rounded-lg border border-tratteggio col-span-1 lg:col-span-2 flex flex-col">
+            <h3 className="text-sm font-medium text-nebbia mb-4 flex items-center gap-2 uppercase tracking-wider">
+               <Activity className="w-4 h-4" /> Trend Confidenza OCR
+            </h3>
+            <div className="flex-1 min-h-[220px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={datiConfidenza}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2e333d" vertical={false} />
+                  <XAxis dataKey="orario" stroke="#737a8c" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis domain={[0, 100]} stroke="#737a8c" fontSize={12} tickLine={false} axisLine={false} unit="%" />
+                  <Tooltip 
+                    cursor={{ stroke: '#2e333d', strokeWidth: 2 }}
+                    contentStyle={{ backgroundColor: '#1f2229', borderColor: '#2e333d', borderRadius: '0.5rem', color: '#fff' }}
+                    itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="confidenza" 
+                    name="Confidenza"
+                    stroke="#3b82f6" 
+                    strokeWidth={3} 
+                    dot={{ r: 4, fill: '#1f2229', stroke: '#3b82f6', strokeWidth: 2 }} 
+                    activeDot={{ r: 6, fill: '#3b82f6' }}
+                    animationDuration={1500}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          
+        </div>
+      )}
 
       {accessi.length === 0 ? (
         <p className="text-nebbia mt-10">Nessuna rilevazione registrata.</p>
