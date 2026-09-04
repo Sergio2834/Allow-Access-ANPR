@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    ports:
+      - "1935:1935"
+    restart: unless-stopped
+
+  backend:
+    build: 
+      context: ./backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend/instance:/app/instance
+      - ./backend/uploads:/app/uploads
+      - ./backend/results:/app/results
+      - ./backend/models:/app/models
+    environment:
+      - FLASK_ENV=production
+      - CAMERA_URL=rtsp://mediamtx:8554/varco
+      - OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp
+    depends_on:
+      - mediamtx
+
+  # 3. L'Interfaccia React servita tramite Nginx
+  frontend:
+    build: 
+      context: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+  
