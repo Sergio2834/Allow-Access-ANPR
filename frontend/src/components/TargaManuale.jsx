@@ -1,23 +1,10 @@
 import React, { useState } from 'react';
 import { Keyboard } from 'lucide-react';
- 
-/*
-  Ripiego con targa digitata a mano.
- 
-  Serve quando la lettura fallisce o e' ambigua. E' l'equivalente del citofono
-  con l'operatore nei parcheggi reali, e mette al riparo la dimostrazione: se
-  l'OCR sbaglia davanti alla commissione, il flusso non si blocca.
- 
-  Props
-    onInvia      (targa) => Promise
-    disabilitato
-*/
- 
+
 const TargaManuale = ({ onInvia, disabilitato = false }) => {
   const [targa, setTarga] = useState('');
  
-  // Si accettano spazi in digitazione ma si invia sempre la forma compatta:
-  // e' quella con cui il backend confronta e memorizza.
+  // Si accettano spazi in digitazione ma si invia sempre la forma compatta
   const compatta = targa.replace(/[^A-Z0-9]/g, '');
   const completa = compatta.length === 7;
  

@@ -8,7 +8,7 @@ const Signup = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [ruolo, setRuolo] = useState("gestore"); // Default a gestore per sicurezza
+  const [ruolo, setRuolo] = useState("gestore");
   
   const signup = useAuthStore((s) => s.signup);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -24,7 +24,7 @@ const Signup = () => {
     try {
       await signup(username, password, ruolo);
       toast.success(`Utente ${username} creato con successo!`);
-      navigate("/"); // Riporta l'admin alla dashboard
+      navigate("/");
     } catch (err) {
       console.error(err);
     }

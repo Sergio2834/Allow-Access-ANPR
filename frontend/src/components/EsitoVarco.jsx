@@ -3,22 +3,6 @@ import { ArrowRightToLine, ArrowLeftToLine, Wallet, AlertTriangle } from 'lucide
 import TargaChip from './TargaChip';
 import { formattaDurata, formattaImporto } from '../utils/formatta';
  
-/*
-  Esito di una rilevazione al varco.
- 
-  Tre esiti arrivano da /api/varco (ingresso, pagamento richiesto, targa non
-  letta); il quarto, uscita consentita, arriva dalla risposta al pagamento.
- 
-  Le classi Tailwind sono scritte per intero e non composte a runtime:
-  Tailwind analizza il sorgente staticamente, quindi una classe costruita
-  come `bg-${colore}/10` non verrebbe mai generata.
- 
-  Props
-    decisione    risposta di /api/varco o del pagamento
-    onPaga       () => void
-    inPagamento  disabilita il pulsante durante la richiesta
-*/
- 
 const STILI = {
   INGRESSO_CONSENTITO: {
     Icona: ArrowRightToLine,

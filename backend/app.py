@@ -56,9 +56,6 @@ def signup():
     password = dati.get("password")
     ruolo = dati.get("ruolo", "gestore") # Di default crea un utente standard
 
-    if ruolo not in ["admin", "gestore"]:
-        ruolo = "gestore"
-
     if not username or not password:
         return jsonify({"message": "Username e password sono obbligatori"}), 400
 
@@ -102,9 +99,9 @@ def login():
         "token", 
         token, 
         httponly=True, 
-        secure=False, # Metti True se in futuro usi HTTPS
+        secure=False,
         samesite="Lax", 
-        max_age=7 * 24 * 60 * 60 # 7 giorni in secondi
+        max_age=7 * 24 * 60 * 60
     )
     
     return risposta, 200
@@ -338,9 +335,6 @@ def elenco_soste():
 @app.route("/api/soste/<int:id_sosta>/pagamento", methods=["POST"])
 def pagamento(id_sosta: int):
     """Pagamento fittizio della sosta in attesa di saldo.
- 
-    Restituisce una decisione come /api/varco, cosi' il frontend puo' usare
-    lo stesso componente per mostrare la conferma di transito consentito.
     """
     decisione = paga_sosta(id_sosta)
     if decisione is None:
@@ -376,7 +370,6 @@ def statistiche_soste():
     soste_totali = Sosta.query.all()
     
     tempi_validi_minuti = []
-    # Inizializziamo un dizionario con tutte le 24 ore a zero veicoli
     ore_picco = {f"{i:02d}:00": 0 for i in range(24)}
 
     for sosta in soste_chiuse:

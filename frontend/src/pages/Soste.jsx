@@ -78,20 +78,15 @@ const Soste = () => {
         error: 'Errore durante la registrazione del pagamento.',
       }
     ).then(async (nuovaDecisione) => {
-      // nuovaDecisione contiene "USCITA_CONSENTITA" dal backend. 
-      // Aggiorniamo il modale per far diventare EsitoVarco verde!
       setModalPagamento({
         idSosta: idSosta,
         decisione: nuovaDecisione
       });
-      // Aggiorniamo anche la tabella in background
       setSoste(await caricaStorico());
     }).catch(console.error);
   };
 
   const visibili = filtro === 'TUTTE' ? soste : soste.filter((s) => s.stato === filtro);
-  // Solo le soste effettivamente saldate concorrono all'incasso: quelle in
-  // attesa hanno un importo fissato ma non ancora riscosso.
   const incasso = soste
     .filter((s) => s.stato === 'PAGATA')
     .reduce((somma, s) => somma + (s.importo_centesimi ?? 0), 0);

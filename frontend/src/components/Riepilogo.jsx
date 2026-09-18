@@ -63,8 +63,6 @@ const Riepilogo = ({ accesso, onClose }) => {
         doc.setTextColor(41, 128, 185);
         doc.text('Analisi Visiva YOLOv8 e PaddleOCR', 14, currentY);
         currentY += 10;
-
-        // Funzione invisibile per scaricare l'immagine come stringa Base64
         const getBase64Image = async (url) => {
           const res = await fetch(url);
           const blob = await res.blob();
@@ -84,15 +82,13 @@ const Riepilogo = ({ accesso, onClose }) => {
 
           const bboxUrl = `${URL_BASE}/api/images/${accesso.bbox_path}?t=${Date.now()}`;
           const base64Bbox = await getBase64Image(bboxUrl);
-          
-          // Impagina la foto grande (180x101 mm, proporzioni 16:9)
+
           doc.addImage(base64Bbox, 'JPEG', 14, currentY, 180, 101);
           currentY += 110;
         }
 
         // Inserimento Ritaglio Targa (Crop)
         if (accesso.crop_path) {
-          // Se stiamo per uscire fuori dal foglio A4, creiamo una nuova pagina
           if (currentY > 240) {
             doc.addPage();
             currentY = 20;
@@ -106,7 +102,6 @@ const Riepilogo = ({ accesso, onClose }) => {
           const cropUrl = `${URL_BASE}/api/images/${accesso.crop_path}?t=${Date.now()}`;
           const base64Crop = await getBase64Image(cropUrl);
           
-          // Impagina il crop più piccolo (80x25 mm)
           doc.addImage(base64Crop, 'JPEG', 14, currentY, 80, 25);
         }
       }
@@ -125,7 +120,6 @@ const Riepilogo = ({ accesso, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-asfalto/90 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-quadro border border-tratteggio rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
         
-        {/* Header Modale */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-tratteggio sticky top-0 bg-quadro/95 backdrop-blur z-10">
           <div className="flex items-center gap-3">
             <Microscope className="w-5 h-5 text-banda" />
@@ -150,7 +144,6 @@ const Riepilogo = ({ accesso, onClose }) => {
           
         </div>
 
-        {/* Corpo Modale */}
         <div className="p-6 space-y-8">
           
           {/* Sezione 1: Metadati */}

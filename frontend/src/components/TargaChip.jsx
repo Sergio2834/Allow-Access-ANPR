@@ -1,17 +1,5 @@
 import React from 'react';
  
-/*
-  Mostra una targa disegnata come una targa vera: bande blu ai lati,
-  caratteri scuri su fondo chiaro. E' il componente ricorrente
-  dell'interfaccia -- compare nell'esito del varco, nella tabella dei
-  veicoli dentro e nel banco di prova -- quindi vale la pena che sia
-  riconoscibile invece di essere una stringa qualsiasi.
- 
-  Props
-    targa      stringa compatta, es. "DE657PA"; null mostra i segnaposto
-    dimensione "sm" | "md" | "lg"
-*/
- 
 const MISURE = {
   sm: { h: 'h-7',  testo: 'text-sm',  banda: 'w-3',   spazio: 'px-2' },
   md: { h: 'h-10', testo: 'text-xl',  banda: 'w-4',   spazio: 'px-3' },

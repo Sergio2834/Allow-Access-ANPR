@@ -7,21 +7,16 @@ const LiveWebcam = () => {
   const analisiInCorso = useParcheggioStore((s) => s.analisiInCorso);
   const imgRef = useRef(null);
   useEffect(() => {
-    // 1. Costruiamo l'URL in modo sicuro
     const baseUrl = api.defaults.baseURL || 'http://localhost:5000';
-    // Aggiungiamo un timestamp per evitare cache sul flusso video
     const streamUrl = `${baseUrl}/api/stream?t=${Date.now()}`;
     const videoElement = imgRef.current;
     
-    // 2. Avviamo lo streaming
     if (videoElement) {
       videoElement.src = streamUrl;
     }
-    // 3. LA MAGIA: Cleanup all'uscita dalla pagina
+    //Cleanup all'uscita dalla pagina
     return () => {
       if (videoElement) {
-        // Assegnare una stringa vuota forza il browser ad abortire la 
-        // connessione HTTP pendente, liberando gli slot di rete!
         videoElement.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
       }
     };
@@ -53,7 +48,6 @@ const LiveWebcam = () => {
         </div>
         )}
         
-        {/* Indicatore visivo di registrazione in alto a destra */}
         {!analisiInCorso && (
         <div className="absolute top-3 right-3 bg-black/60 px-2.5 py-1 rounded-md text-xs text-white font-medium flex items-center gap-2 backdrop-blur-sm shadow-sm">
           <span className="w-2 h-2 rounded-full bg-negato animate-pulse"></span>

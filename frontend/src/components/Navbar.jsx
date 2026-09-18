@@ -26,7 +26,6 @@ const Navbar = () => {
     try {
       await resetSistema();
       toast.success('Sessione terminata con successo!', { id: idToast });
-      // Se sei in una pagina specifica, un reload forzato garantisce la pulizia totale della UI
       window.location.reload(); 
     } catch (e) {
       toast.error('Errore durante il reset', { id: idToast });
@@ -73,8 +72,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Lo stato del parcheggio resta sempre visibile: e' il contesto che
-          rende leggibile ogni esito mostrato dal varco. */}
       <div className="flex items-center gap-4">    
         <div className="flex items-center gap-2 text-sm">
           <Car className="w-4 h-4 text-nebbia" />
@@ -92,7 +89,6 @@ const Navbar = () => {
           />
           {showMenu && (
             <>
-              {/* Overlay invisibile per chiudere il menu cliccando fuori */}
               <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)}></div>
               <div className="absolute right-0 mt-3 w-64 bg-asfalto border border-tratteggio rounded-lg z-50 shadow-2xl py-3 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2">
                 <div className="flex flex-col items-center mb-2 pb-3 border-b border-tratteggio px-4">

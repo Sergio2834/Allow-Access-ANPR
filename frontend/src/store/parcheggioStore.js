@@ -1,23 +1,6 @@
 import { create } from 'zustand';
 import { api, messaggioErrore } from '../utils/api';
  
-/*
-  Stato condiviso dell'applicazione.
- 
-  ---------------------------------------------------------------------------
-  ENDPOINT
-    POST /api/varco                 multipart "video" -> decisione sul transito
-    POST /api/varco/manuale         { targa }         -> stessa decisione
-    GET  /api/soste?stato=attiva                      -> transiti non conclusi
-    GET  /api/soste                                   -> storico completo
-    POST /api/soste/:id/pagamento                     -> decisione: uscita consentita
-    GET  /api/parcheggio                              -> riepilogo
- 
-  Restano attivi /upload, /process e /status per le prove manuali della sola
-  pipeline da Postman: non toccano le soste.
-  ---------------------------------------------------------------------------
-*/
- 
 export const useParcheggioStore = create((set, get) => ({
   sosteAperte: [],
   analisiInCorso: false,
@@ -37,8 +20,6 @@ export const useParcheggioStore = create((set, get) => ({
       set({ sosteAperte: data });
       return data;
     } catch (errore) {
-      // Non blocca l'interfaccia: il varco resta usabile anche se l'elenco
-      // dei veicoli dentro non e' disponibile.
       set({ errore: messaggioErrore(errore, 'Elenco soste non disponibile.') });
       return [];
     }
@@ -46,7 +27,6 @@ export const useParcheggioStore = create((set, get) => ({
 
   caricaStatisticheSoste: async () => {
     try {
-      // API_URL è già definito nel tuo file
       const response = await api.get('api/statistiche/soste');
       set({ statisticheGestionali: response.data });
     } catch (error) {
@@ -58,7 +38,6 @@ export const useParcheggioStore = create((set, get) => ({
   analizzaTransito: async () => {
     set({ analisiInCorso: true, errore: null, decisione: null, analisiIniziataAt: Date.now() });
     try {
-      // Nessun FormData, nessun file. È il backend che acquisisce.
       const { data } = await api.post('/api/varco');
       set({ analisiInCorso: false, analisiIniziataAt: null, decisione: data });
       await get().caricaSosteAperte();
@@ -70,7 +49,7 @@ export const useParcheggioStore = create((set, get) => ({
     }
   },
  
-  /* Ripiego quando la lettura fallisce o e' ambigua. */
+  /* Caso in cui la lettura fallisce o e' ambigua. */
   transitoManuale: async (payload) => {
     set({ analisiInCorso: true, errore: null, analisiIniziataAt: Date.now() });
     try {
@@ -119,7 +98,6 @@ export const useParcheggioStore = create((set, get) => ({
   resetSistema: async () => {
     try {
       await api.post('/api/reset');
-      // Ricarica i dati (che ora saranno vuoti) per aggiornare la UI istantaneamente
       await get().caricaStorico();
       await get().caricaAccessi();
       return true;

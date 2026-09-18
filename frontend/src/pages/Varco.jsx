@@ -9,12 +9,7 @@ import TargaChip from '../components/TargaChip';
 import ConfermaTarga from '../components/ConfermaTarga';
 import { useParcheggioStore } from '../store/parcheggioStore';
 import { formattaDurata, formattaOra, secondiDa } from '../utils/formatta';
- 
-/*
-  Varco unico a stato: una sola telecamera, una sola pagina.
-  Il sistema deduce ingresso o uscita dalla presenza di una sosta attiva per
-  la targa letta.
-*/
+
 const Varco = () => {
   const [secondi, setSecondi] = useState(0);
  
@@ -25,9 +20,6 @@ const Varco = () => {
   } = useParcheggioStore();
  
   useEffect(() => { caricaSosteAperte(); }, [caricaSosteAperte]);
- 
-  // Cronometro dell'analisi: senza un riscontro visibile un video lungo
-  // sembra un blocco dell'applicazione.
   useEffect(() => {
     if (!analisiIniziataAt) {
       setSecondi(0);
@@ -35,7 +27,7 @@ const Varco = () => {
     }
     const aggiorna = () =>
       setSecondi(Math.floor((Date.now() - analisiIniziataAt) / 1000));
-    aggiorna();  // subito, senza aspettare il primo tick
+    aggiorna();
     const intervallo = setInterval(aggiorna, 1000);
     return () => clearInterval(intervallo);
   }, [analisiIniziataAt]);
@@ -125,9 +117,7 @@ const Varco = () => {
             </div>
           )}
         </div>
- 
-        {/* Lo stato del parcheggio resta sempre visibile accanto al varco:
-            e' il contesto che rende leggibile ogni esito. */}
+        
         <aside className="rounded-lg border border-tratteggio bg-quadro p-5">
           <p className="occhiello">Veicoli nel parcheggio</p>
           {sosteAperte.length === 0 ? (

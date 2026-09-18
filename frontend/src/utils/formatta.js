@@ -1,8 +1,3 @@
-/*
-  Funzioni di sola presentazione. A database la targa resta compatta
-  ("DE657PA") e l'importo resta in centesimi: la formattazione avviene
-  solo al momento di mostrare il dato.
-*/
 
 export const formattaTarga = (targa) =>
   targa ? `${targa.slice(0, 2)} ${targa.slice(2, 5)} ${targa.slice(5)}` : '—';

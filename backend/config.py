@@ -5,7 +5,7 @@ RESULTS_FOLDER = os.path.join(BASE_DIR, "results")
 MODELS_FOLDER = os.path.join(BASE_DIR, "models")
 
 # Percorso del modello YOLO attivo
-ACTIVE_MODEL_PATH = os.path.join(MODELS_FOLDER, "best_medium.onnx") #riemtti best_medium.pt se vuoi
+ACTIVE_MODEL_PATH = os.path.join(MODELS_FOLDER, "best_medium.onnx") #rimetti best_medium.pt eventualmente
 
 #Soglie AI
 DETECTION_CONFIDENCE_THRESHOLD = 0.45
