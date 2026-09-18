@@ -20,7 +20,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.ruolo)) {
-    return <Navigate to="/" replace />; // Rimbalzato alla home in modo silenzioso
+    return <Navigate to="/" replace />;
   }
 
   return (

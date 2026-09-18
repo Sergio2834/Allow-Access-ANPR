@@ -11,9 +11,7 @@ LETTERA = "[A-HJ-NPR-TV-Z]"  # 22 lettere: mancano I, O, Q, U
 REGEX_TARGA = re.compile(f"{LETTERA}{{2}}[0-9]{{3}}{LETTERA}{{2}}")
  
 POSIZIONI_CIFRA = (2, 3, 4)
- 
-# Confusioni OCR piu' comuni. Da rifinire sulla matrice di confusione
-# calcolata sul proprio test set.
+
 CIFRA_VERSO_LETTERA = {"0": "D", 
                        "1": "J", 
                        "2": "Z", 
@@ -38,23 +36,14 @@ LETTERA_VERSO_CIFRA = {"O": "0",
  
 def pulisci(testo: str) -> str:
     """Tiene solo lettere maiuscole e cifre.
- 
-    Sostituisce la catena di replace() del main.py originale: elimina in un
-    colpo solo i punti separatori delle targhe italiane, gli spazi, i
-    caratteri non codificabili e i residui non latini del dataset cinese.
     """
     return re.sub(r"[^A-Z0-9]", "", testo.upper()) if testo else ""
  
  
 def correggi(testo: str) -> str:
     """Corregge le confusioni OCR sfruttando la posizione nel formato AA000AA.
- 
-    Sostituisce la riga `text.replace("O", "0")` del codice originale, che era
-    un residuo del progetto sulle targhe cinesi: applicata alle posizioni
-    0, 1, 5, 6 introduce una cifra dove il formato impone una lettera.
- 
-    Agisce solo su stringhe di lunghezza 7: senza allineamento posizionale la
-    correzione non sarebbe fondata.
+        Agisce solo su stringhe di lunghezza 7: senza allineamento posizionale la
+        correzione non sarebbe fondata.
     """
     if len(testo) != 7:
         return testo
@@ -63,18 +52,10 @@ def correggi(testo: str) -> str:
         else CIFRA_VERSO_LETTERA.get(c, c)
         for i, c in enumerate(testo)
     )
- 
- 
+
 def estrai_targa(testo_grezzo: str) -> str | None:
     """Estrae dalla lettura grezza la sottostringa in formato targa italiana.
- 
-    E' la funzione che risolve il caso in cui il riconoscitore restituisce
-    caratteri in eccesso perche' il ritaglio contiene, oltre alla targa, altro
-    materiale grafico (loghi, testo della cornice portatarga, bande blu).
-    Cercare il formato DENTRO la stringa invece di pretendere che coincida con
-    essa e' molto piu' robusto che pretendere un ritaglio perfetto.
- 
-    Restituisce None se nessuna sottostringa rispetta il formato.
+        Restituisce None se nessuna sottostringa rispetta il formato.
     """
     pulito = pulisci(testo_grezzo)
     if not pulito:

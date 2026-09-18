@@ -33,7 +33,6 @@ export const useAuthStore = create((set) => ({
   signup: async (username, password, ruolo) => {
     set({ isLoading: true, error: null });
     try {
-      // Chiamata all'endpoint che abbiamo protetto ieri nel backend
       const response = await axios.post(`${API_URL}/signup`, { username, password, ruolo });
       set({ isLoading: false });
       return response.data;
@@ -52,7 +51,7 @@ export const useAuthStore = create((set) => ({
       const response = await axios.get(`${API_URL}/fetch-user`);
       set({ user: response.data.user, fetchingUser: false });
     } catch (error) {
-      // Se fallisce (es. token scaduto o assente), semplicemente l'utente non è loggato
+      // Se fallisce l'utente non è loggato
       set({ user: null, fetchingUser: false });
     }
   },

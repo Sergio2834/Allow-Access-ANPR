@@ -1,19 +1,7 @@
 import React from 'react';
 import { CheckCircle2, ScanLine, AlertTriangle } from 'lucide-react';
 import TargaChip from './TargaChip';
- 
-/*
-  Esito della lettura restituita dal backend.
- 
-  In questa fase mostra solo cio' che la pipeline sa davvero: quale targa ha
-  letto e con quale supporto. La decisione sul transito -- ingresso, uscita,
-  pagamento richiesto -- arrivera' quando il backend avra' la gestione delle
-  soste.
- 
-  Props
-    risultato  { esito, targa, confidenza, occorrenze, lettureTotali }
-*/
- 
+
 const Dato = ({ etichetta, valore, nota }) => (
   <div>
     <p className="occhiello">{etichetta}</p>
@@ -43,8 +31,7 @@ const EsitoLettura = ({ risultato }) => {
     );
   }
  
-  // Quota di letture che concordano sulla targa vincente: dice quanto il voto
-  // e' stato netto, informazione che la sola confidenza OCR non da'.
+  // Quota di letture che concordano sulla targa vincente
   const supporto = risultato.lettureTotali
     ? Math.round((risultato.occorrenze / risultato.lettureTotali) * 100)
     : 0;

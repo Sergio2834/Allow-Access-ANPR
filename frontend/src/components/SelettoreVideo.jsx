@@ -1,17 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Film, Image as ImageIcon, Upload, X } from 'lucide-react';
- 
-/*
-  Selezione del file da inviare al varco: video o immagine singola.
-  Mostra un'anteprima locale prima dell'invio, cosi' si vede subito se si e'
-  scelto il file giusto -- che era il rischio principale del varco unico.
- 
-  Props
-    file          File selezionato, oppure null
-    onCambia      (file | null) => void
-    disabilitato  blocca la selezione durante l'analisi
-*/
- 
+
 const ESTENSIONI = ['mp4', 'png', 'jpg', 'jpeg'];
 const MAX_MB = 100;
  
@@ -23,8 +12,6 @@ const SelettoreVideo = ({ file, onCambia, disabilitato = false }) => {
  
   const eVideo = file?.type?.startsWith('video');
  
-  // L'URL locale va revocato quando il file cambia, altrimenti resta
-  // allocato in memoria per tutta la vita della pagina.
   useEffect(() => {
     if (!file) {
       setAnteprima(null);

@@ -23,9 +23,8 @@ const Login = () => {
     try {
       await login(username, password);
       toast.success("Accesso effettuato!");
-      navigate("/"); // Porta alla dashboard (Varco)
+      navigate("/");
     } catch (err) {
-      // L'errore viene già gestito e salvato nello store
       console.error(err);
     }
   };

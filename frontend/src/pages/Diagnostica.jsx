@@ -42,8 +42,8 @@ const Diagnostica = () => {
     ? Math.round((successiWebcam.length / tentativiWebcam.length) * 100) 
     : 0;
   const datiTorta = [
-    { name: 'Letture Riuscite', value: successiWebcam.length, color: '#3b82f6' }, // Blu banda
-    { name: 'Letture Fallite', value: tentativiWebcam.length - successiWebcam.length, color: '#ef4444' } // Rosso negato
+    { name: 'Letture Riuscite', value: successiWebcam.length, color: '#3b82f6' },
+    { name: 'Letture Fallite', value: tentativiWebcam.length - successiWebcam.length, color: '#ef4444' }
   ];
   
   const datiConfidenza = accessi

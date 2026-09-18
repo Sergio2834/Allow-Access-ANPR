@@ -55,7 +55,6 @@ const ConfermaTarga = ({ decisione, onConferma, disabilitato }) => {
       </div>
 
       <div className="pt-4 border-t border-tratteggio/50">
-         {/* Riutilizziamo il tuo componente per gestire i casi in cui nessuna candidata è giusta */}
         <TargaManuale onInvia={(targa)=> onConferma({targa})} disabilitato={disabilitato} />
       </div>
     </div>

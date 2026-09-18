@@ -7,12 +7,10 @@ const StatisticheModale = ({ onClose }) => {
   const caricaStatisticheSoste = useParcheggioStore((s) => s.caricaStatisticheSoste);
   const statisticheGestionali = useParcheggioStore((s) => s.statisticheGestionali);
 
-  // Appena il modale si apre, fetchiamo i dati dal backend
   useEffect(() => {
     caricaStatisticheSoste();
   }, [caricaStatisticheSoste]);
 
-  // Funzione di utilità per trasformare i minuti in un formato leggibile (es. "1h 24m")
   const formattaTempo = (minuti) => {
     if (!minuti) return "0 min";
     if (minuti < 60) return `${minuti} min`;

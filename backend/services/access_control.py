@@ -9,14 +9,8 @@ fatto che la targa letta abbia o meno una sosta attiva.
                              e si fissa l'importo da saldare
     sosta DA_PAGARE       -> uscita gia' rilevata, si ripresenta l'importo
  
-Il pagamento avviene nella stessa interazione dell'uscita, come nell'Express
-Pay dei parcheggi a lettura targa: il veicolo passa due volte davanti alla
-telecamera in tutto, all'ingresso e all'uscita.
- 
-Nota architetturale: questo modulo riceve una targa gia' letta, non un file
-ne' dei fotogrammi. E' deliberato -- quando la sorgente passera' dal
-caricamento di un video alla webcam collegata al varco, qui non cambiera'
-nulla.
+Il pagamento avviene nella stessa interazione dell'uscita.
+
 """
  
 from __future__ import annotations
@@ -33,12 +27,9 @@ from park_models import Accesso, EsitoVarco, Sosta, StatoSosta, adesso, db
  
 def calcola_importo(durata_secondi: int) -> int:
     """Importo in centesimi per una sosta di data durata.
- 
-    I minuti si arrotondano per eccesso, come nei parcheggi reali: un minuto
-    iniziato e' un minuto dovuto. Funzione pura, senza dipendenze dal
-    database, quindi verificabile con test unitari.
+        I minuti si arrotondano per eccesso.
     """
-    minuti = -(-max(0, durata_secondi) // 60)  # divisione intera per eccesso
+    minuti = -(-max(0, durata_secondi) // 60)
     minuti_tariffati = max(0, minuti - config.MINUTI_GRATUITI)
  
     if minuti_tariffati == 0:
@@ -104,19 +95,19 @@ def registra_transito(
     crop_path: str | None = None,
     candidati_json: str | None = None,   
 ) -> Decisione:
-    """Applica la macchina a stati e scrive nel registro accessi.
- 
-    Ogni chiamata produce una riga in Accesso, anche quando la lettura
-    fallisce: i tentativi non riusciti sono un dato, non un non-evento, e
-    servono a calcolare il tasso di riuscita del sistema in esercizio.
+    """
+        Applica la macchina a stati e scrive nel registro accessi.
+        Ogni chiamata produce una riga in Accesso, anche quando la lettura
+        fallisce: i tentativi non riusciti servono a calcolare il tasso di 
+        riuscita del sistema in esercizio.
     """
     if not targa:
         decisione = Decisione(
             esito=EsitoVarco.TARGA_NON_RILEVATA,
             messaggio="Nessuna targa leggibile nei fotogrammi.",
-            frame_path=frame_path,  # AGGIUNTO QUI
-            bbox_path=bbox_path,    # AGGIUNTO QUI
-            crop_path=crop_path,    # AGGIUNTO QUI
+            frame_path=frame_path, 
+            bbox_path=bbox_path,    
+            crop_path=crop_path,    
             candidati_json=candidati_json,
         )
         _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
@@ -128,7 +119,7 @@ def registra_transito(
     if sosta is None:
         sosta = Sosta(targa=targa, stato=StatoSosta.APERTA.value, ingresso_at=adesso())
         db.session.add(sosta)
-        db.session.flush()  # assegna l'id, serve al registro accessi
+        db.session.flush()
  
         decisione = Decisione(
             esito=EsitoVarco.INGRESSO_CONSENTITO,
@@ -136,9 +127,9 @@ def registra_transito(
             sosta=sosta,
             durata_secondi=0,
             messaggio="Ingresso registrato. Il conteggio della sosta è iniziato.",
-            frame_path=frame_path,  # AGGIUNTO QUI
-            bbox_path=bbox_path,    # AGGIUNTO QUI
-            crop_path=crop_path,    # AGGIUNTO QUI
+            frame_path=frame_path,
+            bbox_path=bbox_path,    
+            crop_path=crop_path,    
             candidati_json=candidati_json,
         )
         _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
@@ -151,9 +142,7 @@ def registra_transito(
         sosta.importo_centesimi = calcola_importo(sosta.durata_secondi())
         messaggio = "Uscita rilevata. Sosta conclusa, saldare per aprire la sbarra."
     else:
-        # Uscita gia' rilevata in un passaggio precedente: si ripresenta lo
-        # stesso importo. Il cronometro resta fermo, quindi il veicolo non
-        # viene penalizzato per il tempo trascorso al varco.
+        # Uscita gia' rilevata in un passaggio precedente: si ripresenta lo stesso importo.
         messaggio = "Uscita già rilevata. Importo invariato."
  
     decisione = Decisione(
@@ -163,9 +152,9 @@ def registra_transito(
         importo_centesimi=sosta.importo_centesimi,
         durata_secondi=sosta.durata_secondi(),
         messaggio=messaggio,
-        frame_path=frame_path,  # AGGIUNTO QUI
-        bbox_path=bbox_path,    # AGGIUNTO QUI
-        crop_path=crop_path,    # AGGIUNTO QUI
+        frame_path=frame_path,
+        bbox_path=bbox_path,  
+        crop_path=crop_path,
         candidati_json=candidati_json,
     )
     _registra(decisione, sorgente, confidenza, occorrenze, letture_totali)
@@ -173,11 +162,10 @@ def registra_transito(
  
  
 def paga_sosta(id_sosta: int) -> Decisione | None:
-    """Registra il pagamento fittizio di una sosta in attesa di saldo.
- 
-    L'importo NON viene ricalcolato: e' stato fissato alla rilevazione
-    dell'uscita, quando il cronometro si e' fermato. Ricalcolarlo qui
-    addebiterebbe al conducente anche i secondi passati a pagare.
+    """
+        Registra il pagamento fittizio di una sosta in attesa di saldo.
+        L'importo NON viene ricalcolato: e' stato fissato alla rilevazione
+        dell'uscita, quando il cronometro si e' fermato. 
     """
     sosta = db.session.get(Sosta, id_sosta)
     if sosta is None or sosta.stato != StatoSosta.DA_PAGARE.value:
